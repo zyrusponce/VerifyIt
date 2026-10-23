@@ -6,6 +6,7 @@
   "scripts": {
     "build:vercel": "vite build --config vite.config.vercel.js",
     "dev": "vite",
+    "prebuild": "npm install --prefix server --no-audit --no-fund",
     "build": "vite build",
     "preview": "vite preview",
     "server:install": "npm install --prefix server",

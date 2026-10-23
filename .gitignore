@@ -11,3 +11,6 @@ server/.env
 server/.env.*
 !server/.env.example
 wrangler-secrets.env
+# Local Cloudflare (wrangler/Miniflare) state and generated Vercel build output
+.wrangler/
+dist-vercel/
