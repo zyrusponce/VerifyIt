@@ -61,7 +61,7 @@ const noLigatures = () => ({ liga: false, clig: false })
 let nameFont
 /** True when every character of the name has a glyph in the font used to print it. */
 export function canPrintName(name) {
-  nnameFont ??= fontkit.create(FONTS.serifBold)
+  nameFont ??= fontkit.create(FONTS.serifBold)
   for (const char of String(name ?? '')) {
     if (char === ' ') continue
     if (!nameFont.hasGlyphForCodePoint(char.codePointAt(0))) return false

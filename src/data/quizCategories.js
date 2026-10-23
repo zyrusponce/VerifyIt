@@ -91,10 +91,10 @@ export const quizCategories = [
     id: 'deepfakes',
     title: 'Deepfakes and AI-Generated Content',
     description:
-      'Spot synthetic people and fake "historical" photos: decide which faces, portraits, and old photos are real and which were made by AI, then see the clues and the original sources.',
+      'Watch real videos found online and decide: real footage, a deepfake of a real person, or a clip made entirely by AI tools like Sora and Veo. Then see the clues and the original sources.',
     icon: 'clapperboard',
     difficulty: 'Advanced',
-    topics: ['AI-generated faces', 'Fake historical photos', 'Real people vs. synthetic people', 'Checking the source'],
+    topics: ['Deepfake videos', 'AI-generated video (Sora, Veo)', 'Real footage vs. fakes', 'Checking the source'],
     notice: 'No detection tool is perfectly accurate. Verifying where media came from is usually more reliable than judging how it looks.',
     questions: deepfakesQuestions,
     relatedLessonIds: ['ai-generated-content-deepfakes'],

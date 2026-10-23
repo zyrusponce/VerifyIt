@@ -86,16 +86,43 @@ describe('answer check (instant feedback)', () => {
     for (const credit of res.body.data.credits) expect(credit.url).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/)
   })
 
+  it('serves video questions without anything that gives away which clips are fake', async () => {
+    const list = await request(ctx.app).get(`${API}/quizzes/deepfakes/questions`).expect(200)
+    const questions = list.body.data.questions
+    expect(questions).toHaveLength(10)
+    for (const question of questions) {
+      const clips = question.videos ?? [question.video]
+      expect(clips.length).toBeGreaterThan(0)
+      for (const clip of clips) {
+        expect(clip.src).toMatch(/^\/quiz-videos\/clip-\d{2}\.mp4$/)
+        expect(clip.poster).toMatch(/^\/quiz-videos\/clip-\d{2}\.jpg$/)
+        expect(clip.description).toBeTruthy()
+      }
+      // Tool names, the word "deepfake" in descriptions, and source links only appear after answering.
+      const clipText = JSON.stringify(clips)
+      expect(clipText).not.toMatch(/sora|veo|openai|deepfake|represent|commons|wikimedia/i)
+      expect(question).not.toHaveProperty('credits')
+    }
+
+    const pair = await request(ctx.app)
+      .post(`${API}/quizzes/deepfakes/check`)
+      .send({ questionId: 'df-26', selectedAnswer: getQuestion('df-26').answer })
+      .expect(200)
+    expect(pair.body.data.isCorrect).toBe(true)
+    expect(pair.body.data.credits).toHaveLength(2)
+    for (const credit of pair.body.data.credits) expect(credit.url).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/)
+  })
+
   it('accepts any topic question in the Mixed Challenge but rejects questions from other categories', async () => {
-    await request(ctx.app).post(`${API}/quizzes/${MIXED_CATEGORY_ID}/check`).send({ questionId: 'df-12', selectedAnswer: 0 }).expect(200)
-    const res = await request(ctx.app).post(`${API}/quizzes/fact-checking/check`).send({ questionId: 'df-12', selectedAnswer: 0 }).expect(422)
+    await request(ctx.app).post(`${API}/quizzes/${MIXED_CATEGORY_ID}/check`).send({ questionId: 'df-22', selectedAnswer: 0 }).expect(200)
+    const res = await request(ctx.app).post(`${API}/quizzes/fact-checking/check`).send({ questionId: 'df-22', selectedAnswer: 0 }).expect(422)
     expect(res.body.error.code).toBe('UNKNOWN_QUESTION')
   })
 
   it('validates the selected option', async () => {
-    await request(ctx.app).post(`${API}/quizzes/deepfakes/check`).send({ questionId: 'df-12', selectedAnswer: 4 }).expect(400)
-    await request(ctx.app).post(`${API}/quizzes/deepfakes/check`).send({ questionId: 'df-12', selectedAnswer: -1 }).expect(400)
-    await request(ctx.app).post(`${API}/quizzes/deepfakes/check`).send({ questionId: 'df-12' }).expect(400)
+    await request(ctx.app).post(`${API}/quizzes/deepfakes/check`).send({ questionId: 'df-22', selectedAnswer: 4 }).expect(400)
+    await request(ctx.app).post(`${API}/quizzes/deepfakes/check`).send({ questionId: 'df-22', selectedAnswer: -1 }).expect(400)
+    await request(ctx.app).post(`${API}/quizzes/deepfakes/check`).send({ questionId: 'df-22' }).expect(400)
   })
 })
 

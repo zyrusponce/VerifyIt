@@ -1,4 +1,4 @@
-import { CircleCheck, CircleX, ImageIcon, Info, ZoomIn } from 'lucide-react'
+import { CircleCheck, CircleX, Film, ImageIcon, Info, ZoomIn } from 'lucide-react'
 import Alert from './Alert'
 import Badge, { difficultyTone } from './Badge'
 import Button from './Button'
@@ -13,7 +13,34 @@ function optionClass({ submitted, isSelected, isCorrect }) {
   return 'border-slate-200 bg-white text-slate-700 hover:border-navy-300 hover:bg-slate-50'
 }
 
-/** One multiple-choice question with optional scenario, image(s), and feedback. */
+/**
+ * A quiz video clip. Nothing plays until the learner presses play, and the text description is linked for
+ * screen-reader users (the clips have no captions of their own).
+ */
+function QuizVideo({ item, className = '' }) {
+  const descriptionId = `video-desc-${item.src.replace(/[^a-z0-9]/gi, '-')}`
+  return (
+    <>
+      <video
+        key={item.src}
+        src={item.src}
+        poster={item.poster}
+        controls
+        playsInline
+        preload="metadata"
+        aria-describedby={descriptionId}
+        className={`block w-full bg-black ${className}`}
+      >
+        Your browser cannot play this video.
+      </video>
+      <span id={descriptionId} className="sr-only">
+        {item.description}
+      </span>
+    </>
+  )
+}
+
+/** One multiple-choice question with optional scenario, image(s), video(s), and feedback. */
 export default function QuizQuestion({
   question,
   number,
@@ -27,7 +54,7 @@ export default function QuizQuestion({
 }) {
   const isCorrect = submitted && selected === question.answer
   const canSubmit = selected !== null && selected !== undefined
-  const { scenario, image, images } = question
+  const { scenario, image, images, video, videos } = question
 
   return (
     <div className="space-y-6">
@@ -35,6 +62,39 @@ export default function QuizQuestion({
         {categoryLabel && <Badge tone="navy">{categoryLabel}</Badge>}
         <Badge tone={difficultyTone[question.difficulty] ?? 'slate'}>{question.difficulty}</Badge>
       </div>
+
+      {videos?.length > 0 && (
+        <figure className="rounded-md border border-slate-200 bg-paper p-3 sm:p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {videos.map((item) => (
+              <div key={item.src} className="overflow-hidden rounded-md border border-slate-200 bg-black">
+                <p className="keep-palette flex items-center gap-1.5 bg-navy-900 px-3 py-1.5 text-xs font-bold text-white">
+                  <Film className="size-3.5 text-cyan-300" aria-hidden="true" />
+                  {item.label}
+                </p>
+                <QuizVideo item={{ ...item, description: `${item.label}: ${item.description}` }} className="aspect-video object-contain" />
+              </div>
+            ))}
+          </div>
+          {question.videosNote && (
+            <figcaption className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-slate-600">
+              <Film className="mt-0.5 size-3.5 shrink-0 text-cyan-600" aria-hidden="true" />
+              {question.videosNote}
+            </figcaption>
+          )}
+        </figure>
+      )}
+
+      {video && (
+        <figure className="overflow-hidden rounded-md border border-slate-200 bg-paper">
+          {/* Tall (phone-shaped) clips are capped so the question stays on screen. */}
+          <QuizVideo item={video} className="h-auto max-h-[30rem] object-contain" />
+          <figcaption className="flex items-start gap-2 border-t border-slate-200 bg-white px-4 py-3 text-xs leading-relaxed text-slate-600">
+            <Film className="mt-0.5 size-3.5 shrink-0 text-cyan-600" aria-hidden="true" />
+            {video.caption}
+          </figcaption>
+        </figure>
+      )}
 
       {images?.length > 0 && (
         <figure className="rounded-md border border-slate-200 bg-paper p-3 sm:p-4">

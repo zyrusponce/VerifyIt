@@ -17,6 +17,16 @@ const POLICIES = {
 
 const passThrough = (_req, _res, next) => next()
 
+/**
+ * Who a request counts against. Cloudflare Workers does not expose the client address as `req.ip`, so the
+ * limiter would crash on every request there; Cloudflare always sets `CF-Connecting-IP` itself (a client cannot
+ * forge it), so prefer that, then `req.ip` (local server, other hosts), then one shared bucket.
+ */
+export function clientKey(req) {
+  const cloudflareIp = req.headers?.['cf-connecting-ip']
+  return (typeof cloudflareIp === 'string' && cloudflareIp.trim()) || req.ip || 'unknown-client'
+}
+
 /** `enabled: false` (tests only) disables limiting. */
 export function createRateLimiters({ enabled = true } = {}) {
   return Object.fromEntries(
@@ -27,6 +37,9 @@ export function createRateLimiters({ enabled = true } = {}) {
             ...policy,
             standardHeaders: 'draft-8',
             legacyHeaders: false,
+            keyGenerator: clientKey,
+            // The key above already handles proxies, so the library's req.ip / X-Forwarded-For checks do not apply.
+            validate: { ip: false, trustProxy: false, xForwardedForHeader: false, forwardedHeader: false },
             handler: (_req, _res, next) => {
               next(new AppError(429, 'RATE_LIMITED', 'Too many requests. Please wait a moment and try again.'))
             },

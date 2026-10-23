@@ -1,7 +1,10 @@
-import { CircleCheck, CircleX, ExternalLink, ImageIcon } from 'lucide-react'
+import { CircleCheck, CircleX, ExternalLink, Film, ImageIcon } from 'lucide-react'
 
-/** Shown after an answer is submitted: correct/incorrect, explanation, image sources, and source link. */
+/** Shown after an answer is submitted: correct/incorrect, explanation, media sources, and source link. */
 export default function QuizFeedback({ question, isCorrect }) {
+  const isVideo = Boolean(question.video || question.videos?.length)
+  const SourcesIcon = isVideo ? Film : ImageIcon
+
   return (
     <div
       role="status"
@@ -24,8 +27,8 @@ export default function QuizFeedback({ question, isCorrect }) {
       {question.credits?.length > 0 && (
         <div className="mt-4 rounded-md bg-white/80 p-4 ring-1 ring-slate-200">
           <p className="flex items-center gap-2 text-sm font-semibold text-navy-900">
-            <ImageIcon className="size-4 text-cyan-600" aria-hidden="true" />
-            Image sources
+            <SourcesIcon className="size-4 text-cyan-600" aria-hidden="true" />
+            {isVideo ? 'Video sources' : 'Image sources'}
           </p>
           <ul className="mt-2 space-y-2">
             {question.credits.map((credit) => (
