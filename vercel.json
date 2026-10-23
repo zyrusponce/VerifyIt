@@ -3,5 +3,8 @@
   "framework": null,
   "buildCommand": "npx vite build --config vite.config.vercel.js",
   "outputDirectory": "dist-vercel",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://verifyit.zyrusponce02.workers.dev/api/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
