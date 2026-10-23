@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite'
 import { cloudflare } from '@cloudflare/vite-plugin'
 
 const pdfkitNodeEntry = fileURLToPath(
-  new URL('./server/node_modules/pdfkit/js/pdfkit.node.mjs', import.meta.url)
+  new URL('./server/node_modules/pdfkit/js/pdfkit.js', import.meta.url)
 )
 
 const fontkitNodeEntry = fileURLToPath(
