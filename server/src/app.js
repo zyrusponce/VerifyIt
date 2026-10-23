@@ -77,3 +77,4 @@ export function createApp({ config, auth, repositories, logger, options = {} }) 
   app.use(createErrorHandler({ logger }))
   return app
 }
+
