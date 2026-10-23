@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npx vite build --config vite.config.vercel.js",
+  "outputDirectory": "dist-vercel",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}
