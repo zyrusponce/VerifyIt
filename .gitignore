@@ -1,0 +1,12 @@
+node_modules
+dist
+*.local
+.DS_Store
+
+# Environment files hold real project values. Only the *.example templates are committed.
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example

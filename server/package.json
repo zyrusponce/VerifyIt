@@ -1,0 +1,39 @@
+{
+  "name": "verifyit-server",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Express API for VerifyIT: authentication, progress, authoritative scoring, and certificates.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "vitest run --exclude \"tests/live/**\" --exclude \"tests/e2e/**\"",
+    "test:watch": "vitest --exclude \"tests/live/**\" --exclude \"tests/e2e/**\"",
+    "test:live": "vitest run tests/live",
+    "catalog:seed": "node scripts/generate-catalog-seed.js",
+    "test:e2e": "vitest run tests/e2e"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.118.0",
+    "cors": "^2.8.6",
+    "dejavu-fonts-ttf": "^2.37.3",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
+    "fontkit": "^2.0.4",
+    "helmet": "^8.3.0",
+    "pdfkit": "^0.20.2",
+    "qrcode": "^1.5.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.11",
+    "playwright-core": "^1.64.1",
+    "supertest": "^7.3.1",
+    "unpdf": "^1.9.1",
+    "vitest": "^5.0.5"
+  }
+}

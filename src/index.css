@@ -1,0 +1,299 @@
+@import "tailwindcss";
+
+/* `dark:` utilities apply while <html> has the `dark` class (set by ThemeProvider and public/theme-init.js). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  VerifyIT design tokens (Tailwind CSS v4).
+  Every value in @theme becomes a utility class, e.g. bg-navy-900, text-navy-700, font-display.
+*/
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-navy-50: #f0f4fb;
+  --color-navy-100: #dde6f5;
+  --color-navy-200: #bccdea;
+  --color-navy-300: #8eaad9;
+  --color-navy-400: #5a7fc2;
+  --color-navy-500: #3a5ea8;
+  --color-navy-600: #2a4889;
+  --color-navy-700: #1f386d;
+  --color-navy-800: #172b57;
+  --color-navy-900: #0b1f4d;
+  --color-navy-950: #071433;
+
+  --color-paper: #f8f9fb;
+
+  --animate-fade-up: fade-up 0.5s ease-out both;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-scan: scan 6s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Slow top-to-bottom sweep used on the hero image preview. */
+  @keyframes scan {
+    0% {
+      top: -3.5rem;
+      opacity: 0;
+    }
+    15%,
+    85% {
+      opacity: 1;
+    }
+    100% {
+      top: 100%;
+      opacity: 0;
+    }
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
+  }
+}
+
+/*
+  Dark mode.
+
+  Every color utility reads a theme variable (bg-white uses var(--color-white), and so on), so dark mode swaps
+  the palette here instead of adding dark: classes to every component. Each scale is mirrored: light shades
+  become dark and dark shades become light, so every text and background pair keeps its contrast. White and
+  paper become the dark page and card surfaces.
+
+  `.keep-palette` restores the original palette for a subtree. Use it on areas that are already dark by design
+  (navy bands, the footer, result panels, the logo mark) and on things that must look printed (the certificate).
+*/
+@layer base {
+  :root.dark {
+    color-scheme: dark;
+
+    --color-white: #0b1530;
+    --color-paper: #070f24;
+
+    --color-navy-50: #121f40;
+    --color-navy-100: #182a52;
+    --color-navy-200: #22386a;
+    --color-navy-300: #34508a;
+    --color-navy-400: #5a7fc2;
+    --color-navy-500: #7f9ed6;
+    --color-navy-600: #a1b8e2;
+    --color-navy-700: #bfd0ee;
+    --color-navy-800: #d6e1f4;
+    --color-navy-900: #e8eefa;
+    --color-navy-950: #f4f7fd;
+
+    --color-slate-50: #0f1a35;
+    --color-slate-100: #142040;
+    --color-slate-200: #1e2b4a;
+    --color-slate-300: #2c3b5c;
+    --color-slate-400: #5b6b88;
+    --color-slate-500: #8391aa;
+    --color-slate-600: #a3afc4;
+    --color-slate-700: #c3cddc;
+    --color-slate-800: #dbe2ec;
+    --color-slate-900: #eef2f7;
+    --color-slate-950: #f8fafc;
+
+    --color-cyan-50: #062a35;
+    --color-cyan-100: #083544;
+    --color-cyan-200: #0b4a5c;
+    --color-cyan-300: #0e6f86;
+    --color-cyan-400: oklch(78.9% 0.154 211.53);
+    --color-cyan-500: oklch(71.5% 0.143 215.221);
+    --color-cyan-600: oklch(78.9% 0.154 211.53);
+    --color-cyan-700: oklch(86.5% 0.127 207.078);
+    --color-cyan-800: oklch(91.7% 0.08 205.041);
+    --color-cyan-900: oklch(95.6% 0.045 203.388);
+    --color-cyan-950: oklch(98.4% 0.019 200.873);
+
+    --color-amber-50: oklch(27.9% 0.077 45.635);
+    --color-amber-100: oklch(41.4% 0.112 45.904);
+    --color-amber-200: oklch(47.3% 0.137 46.201);
+    --color-amber-300: oklch(55.5% 0.163 48.998);
+    --color-amber-400: oklch(66.6% 0.179 58.318);
+    --color-amber-600: oklch(82.8% 0.189 84.429);
+    --color-amber-700: oklch(87.9% 0.169 91.605);
+    --color-amber-800: oklch(92.4% 0.12 95.746);
+    --color-amber-900: oklch(96.2% 0.059 95.617);
+    --color-amber-950: oklch(98.7% 0.022 95.277);
+
+    --color-emerald-50: oklch(26.2% 0.051 172.552);
+    --color-emerald-100: oklch(37.8% 0.077 168.94);
+    --color-emerald-200: oklch(43.2% 0.095 166.913);
+    --color-emerald-300: oklch(50.8% 0.118 165.612);
+    --color-emerald-400: oklch(59.6% 0.145 163.225);
+    --color-emerald-600: oklch(76.5% 0.177 163.223);
+    --color-emerald-700: oklch(84.5% 0.143 164.978);
+    --color-emerald-800: oklch(90.5% 0.093 164.15);
+    --color-emerald-900: oklch(95% 0.052 163.051);
+    --color-emerald-950: oklch(97.9% 0.021 166.113);
+
+    --color-orange-50: oklch(26.6% 0.079 36.259);
+    --color-orange-100: oklch(40.8% 0.123 38.172);
+    --color-orange-200: oklch(47% 0.157 37.304);
+    --color-orange-300: oklch(55.3% 0.195 38.402);
+    --color-orange-400: oklch(64.6% 0.222 41.116);
+    --color-orange-600: oklch(75% 0.183 55.934);
+    --color-orange-700: oklch(83.7% 0.128 66.29);
+    --color-orange-800: oklch(90.1% 0.076 70.697);
+    --color-orange-900: oklch(95.4% 0.038 75.164);
+    --color-orange-950: oklch(98% 0.016 73.684);
+
+    --color-rose-50: oklch(27.1% 0.105 12.094);
+    --color-rose-100: oklch(41% 0.159 10.272);
+    --color-rose-200: oklch(45.5% 0.188 13.697);
+    --color-rose-300: oklch(51.4% 0.222 16.935);
+    --color-rose-400: oklch(58.6% 0.253 17.585);
+    --color-rose-600: oklch(71.2% 0.194 13.428);
+    --color-rose-700: oklch(81% 0.117 11.638);
+    --color-rose-800: oklch(89.2% 0.058 10.001);
+    --color-rose-900: oklch(94.1% 0.03 12.58);
+    --color-rose-950: oklch(96.9% 0.015 12.422);
+  }
+
+  .dark .keep-palette {
+    color-scheme: light;
+
+    --color-white: #fff;
+    --color-paper: #f8f9fb;
+
+    --color-navy-50: #f0f4fb;
+    --color-navy-100: #dde6f5;
+    --color-navy-200: #bccdea;
+    --color-navy-300: #8eaad9;
+    --color-navy-400: #5a7fc2;
+    --color-navy-500: #3a5ea8;
+    --color-navy-600: #2a4889;
+    --color-navy-700: #1f386d;
+    --color-navy-800: #172b57;
+    --color-navy-900: #0b1f4d;
+    --color-navy-950: #071433;
+
+    --color-slate-50: oklch(98.4% 0.003 247.858);
+    --color-slate-100: oklch(96.8% 0.007 247.896);
+    --color-slate-200: oklch(92.9% 0.013 255.508);
+    --color-slate-300: oklch(86.9% 0.022 252.894);
+    --color-slate-400: oklch(70.4% 0.04 256.788);
+    --color-slate-500: oklch(55.4% 0.046 257.417);
+    --color-slate-600: oklch(44.6% 0.043 257.281);
+    --color-slate-700: oklch(37.2% 0.044 257.287);
+    --color-slate-800: oklch(27.9% 0.041 260.031);
+    --color-slate-900: oklch(20.8% 0.042 265.755);
+    --color-slate-950: oklch(12.9% 0.042 264.695);
+
+    --color-cyan-50: oklch(98.4% 0.019 200.873);
+    --color-cyan-100: oklch(95.6% 0.045 203.388);
+    --color-cyan-200: oklch(91.7% 0.08 205.041);
+    --color-cyan-300: oklch(86.5% 0.127 207.078);
+    --color-cyan-400: oklch(78.9% 0.154 211.53);
+    --color-cyan-500: oklch(71.5% 0.143 215.221);
+    --color-cyan-600: oklch(60.9% 0.126 221.723);
+    --color-cyan-700: oklch(52% 0.105 223.128);
+    --color-cyan-800: oklch(45% 0.085 224.283);
+    --color-cyan-900: oklch(39.8% 0.07 227.392);
+    --color-cyan-950: oklch(30.2% 0.056 229.695);
+
+    --color-amber-50: oklch(98.7% 0.022 95.277);
+    --color-amber-100: oklch(96.2% 0.059 95.617);
+    --color-amber-200: oklch(92.4% 0.12 95.746);
+    --color-amber-300: oklch(87.9% 0.169 91.605);
+    --color-amber-400: oklch(82.8% 0.189 84.429);
+    --color-amber-600: oklch(66.6% 0.179 58.318);
+    --color-amber-700: oklch(55.5% 0.163 48.998);
+    --color-amber-800: oklch(47.3% 0.137 46.201);
+    --color-amber-900: oklch(41.4% 0.112 45.904);
+    --color-amber-950: oklch(27.9% 0.077 45.635);
+
+    --color-emerald-50: oklch(97.9% 0.021 166.113);
+    --color-emerald-100: oklch(95% 0.052 163.051);
+    --color-emerald-200: oklch(90.5% 0.093 164.15);
+    --color-emerald-300: oklch(84.5% 0.143 164.978);
+    --color-emerald-400: oklch(76.5% 0.177 163.223);
+    --color-emerald-600: oklch(59.6% 0.145 163.225);
+    --color-emerald-700: oklch(50.8% 0.118 165.612);
+    --color-emerald-800: oklch(43.2% 0.095 166.913);
+    --color-emerald-900: oklch(37.8% 0.077 168.94);
+    --color-emerald-950: oklch(26.2% 0.051 172.552);
+
+    --color-orange-50: oklch(98% 0.016 73.684);
+    --color-orange-100: oklch(95.4% 0.038 75.164);
+    --color-orange-200: oklch(90.1% 0.076 70.697);
+    --color-orange-300: oklch(83.7% 0.128 66.29);
+    --color-orange-400: oklch(75% 0.183 55.934);
+    --color-orange-600: oklch(64.6% 0.222 41.116);
+    --color-orange-700: oklch(55.3% 0.195 38.402);
+    --color-orange-800: oklch(47% 0.157 37.304);
+    --color-orange-900: oklch(40.8% 0.123 38.172);
+    --color-orange-950: oklch(26.6% 0.079 36.259);
+
+    --color-rose-50: oklch(96.9% 0.015 12.422);
+    --color-rose-100: oklch(94.1% 0.03 12.58);
+    --color-rose-200: oklch(89.2% 0.058 10.001);
+    --color-rose-300: oklch(81% 0.117 11.638);
+    --color-rose-400: oklch(71.2% 0.194 13.428);
+    --color-rose-600: oklch(58.6% 0.253 17.585);
+    --color-rose-700: oklch(51.4% 0.222 16.935);
+    --color-rose-800: oklch(45.5% 0.188 13.697);
+    --color-rose-900: oklch(41% 0.159 10.272);
+    --color-rose-950: oklch(27.1% 0.105 12.094);
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-white font-sans text-slate-700 antialiased;
+    overflow-x: hidden;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display tracking-tight text-navy-900;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    @apply bg-cyan-200 text-navy-950;
+  }
+
+  /* One consistent, clearly visible keyboard focus style across the site. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-cyan-600;
+  }
+}
+
+/* Respect users who ask the operating system for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
