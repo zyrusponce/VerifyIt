@@ -5,21 +5,32 @@
   🚨 ERROR HANDLING: The whole PDF is rendered into memory first; any PDFKit/QR failure rejects the
      promise (→ 500 via the error handler) so a partial or broken file is never sent.
 */
-import path from 'node:path'
-import { createRequire } from 'node:module'
+
+import { Buffer } from 'node:buffer'
 import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
 import * as fontkit from 'fontkit'
 
-const require = createRequire(import.meta.url)
-const fontDir = path.join(path.dirname(require.resolve('dejavu-fonts-ttf/package.json')), 'ttf')
+import serifFontUrl from '../../node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif.ttf?inline'
+import serifBoldFontUrl from '../../node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif-Bold.ttf?inline'
+import sansFontUrl from '../../node_modules/dejavu-fonts-ttf/ttf/DejaVuSans.ttf?inline'
+import sansBoldFontUrl from '../../node_modules/dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf?inline'
 
-// DejaVu fonts cover Latin (including ñ and other accents), Greek, Cyrillic, and Vietnamese names.
+function fontBuffer(dataUrl) {
+  const comma = dataUrl.indexOf(',')
+
+  if (comma < 0) {
+    throw new Error('Invalid embedded font data')
+  }
+
+  return Buffer.from(dataUrl.slice(comma + 1), 'base64')
+}
+
 const FONTS = {
-  serif: path.join(fontDir, 'DejaVuSerif.ttf'),
-  serifBold: path.join(fontDir, 'DejaVuSerif-Bold.ttf'),
-  sans: path.join(fontDir, 'DejaVuSans.ttf'),
-  sansBold: path.join(fontDir, 'DejaVuSans-Bold.ttf'),
+  serif: fontBuffer(serifFontUrl),
+  serifBold: fontBuffer(serifBoldFontUrl),
+  sans: fontBuffer(sansFontUrl),
+  sansBold: fontBuffer(sansBoldFontUrl),
 }
 
 const COLORS = {
@@ -50,7 +61,7 @@ const noLigatures = () => ({ liga: false, clig: false })
 let nameFont
 /** True when every character of the name has a glyph in the font used to print it. */
 export function canPrintName(name) {
-  nameFont ??= fontkit.openSync(FONTS.serifBold)
+  nnameFont ??= fontkit.create(FONTS.serifBold)
   for (const char of String(name ?? '')) {
     if (char === ' ') continue
     if (!nameFont.hasGlyphForCodePoint(char.codePointAt(0))) return false
