@@ -75,10 +75,10 @@ export const quizCategories = [
     id: 'image-manipulation',
     title: 'Image Manipulation and Missing Context',
     description:
-      'Spot images that have been edited, cropped, or reused in the wrong context. An authentic image can still be used to mislead.',
+      'Study real photos found online: spot people erased from history, pasted-in objects, and real disaster photos reused with the wrong date or place. An authentic image can still be used to mislead.',
     icon: 'crop',
     difficulty: 'Intermediate',
-    topics: ['Reverse image search', 'Original publication dates', 'Cropping and editing', 'Image context'],
+    topics: ['Erased and added details', 'Composite images', 'Old photos in new contexts', 'Reverse image search'],
     notice: 'An authentic, unedited photo can still mislead when it is shown with the wrong date, place, or caption.',
     questions: imageManipulationQuestions,
     relatedLessonIds: ['manipulated-images-context'],

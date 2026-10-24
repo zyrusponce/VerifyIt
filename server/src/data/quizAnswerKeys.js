@@ -330,56 +330,149 @@ export const quizAnswerKeys = {
     explanation:
       'Strong evidence comes from multiple independent, accountable sources that can be checked. Shares measure popularity, not accuracy, and anonymous or secondhand claims are the weakest kind of evidence.',
   },
-  // imageManipulation.js
-  'im-01': {
-    answer: 1,
-    explanation:
-      'The image is genuine but comes from a different event. This does not prove there is no flood today, but it does mean this photo cannot be used as evidence of one.',
-  },
-  'im-02': {
+  // imageManipulation.js: every image is a real file from Wikimedia Commons (public domain, CC BY, or CC BY-SA).
+  // Option orders: pairs [A edited, B edited, both edited, neither edited]; singles are listed per question.
+  'im-11': {
     answer: 0,
     explanation:
-      'A tightly cropped photo combined with a misleading caption changed the meaning. Looking for the wider or original version of an image often reveals the full picture.',
+      'Image A was edited. Image B is the original April 1937 photo: Vyacheslav Molotov is on the left, Stalin in the middle, and Nikolai Yezhov, head of the Soviet secret police, on the right. Yezhov fell from power and was executed in 1940, and he was then erased from this photo: in Image A he has been replaced by more water and railing, and the faces and background were brightened. Removing people who fell out of favour was common Soviet propaganda. The clue is the empty space where a person once stood. The proof is finding the original: comparing the two versions makes the edit obvious.',
+    credits: [
+      {
+        label: 'Image A: the edited version with Nikolai Yezhov removed, 1937, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:Stalin_and_Molotov_along_the_Volga%E2%80%93Don_Canal,_Nikolai_Yezhov_removed.jpg',
+      },
+      {
+        label: 'Image B: the original photo of Molotov, Stalin, and Yezhov, April 1937, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:Nikolai_Yezhov_with_Stalin_and_Molotov_along_the_Volga%E2%80%93Don_Canal,_original.jpg',
+      },
+    ],
   },
-  'im-03': {
+  'im-12': {
     answer: 1,
     explanation:
-      'Nothing in the cropped photo was invented, but cutting out the empty space changed what it seems to show. Cropping is one of the simplest and most common ways to mislead with an authentic image.',
+      'Image B was edited. Image A is the original photo from 26 May 1939: King George VI, Queen Elizabeth, and Prime Minister Mackenzie King on the terrace of the Banff Springs Hotel in Canada. In Image B the King has been removed. The archive record for this photo states that it is "the same image... except that King George VI has been deleted". Look at the trees and the mountain: the background lines up exactly, which shows both versions came from one photo. Photos were edited long before computers; a missing person is just as misleading as an added one.',
+    credits: [
+      {
+        label: 'Image A: King George VI, Queen Elizabeth, and W. L. Mackenzie King at Banff, 1939, National Film Board of Canada, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:GeorgeVIBanffSprings.jpg',
+      },
+      {
+        label: 'Image B: the same photo with King George VI deleted, National Film Board of Canada, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:QueenMotherandWLMK.jpg',
+      },
+    ],
   },
-  'im-04': {
+  'im-13': {
     answer: 1,
     explanation:
-      'The clip is real, but it removes the moments before and after that explain the officer\'s action. Missing context can make genuine footage tell a false story.',
+      'Someone was removed. In the original photo from about 1902, the four grand duchesses Olga, Tatiana, Maria, and Anastasia sit on a bench with their nanny, Margaretta Eagar, standing behind them. In this version her upper body was retouched away, but the editor left part of her long skirt: look below the bench, behind the youngest girl\'s legs, where a large piece of grey fabric belongs to no one. Edits often leave leftovers like this, such as a stray shadow, an extra hand, or clothing with no person. The original, with the nanny, is linked below.',
+    credits: [
+      {
+        label: 'The retouched version, with the nanny removed, C. E. de Hahn & Co., Tsarskoye Selo, about 1902, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:OTMA_without_their_nanny_Margaretta_Eagar.jpg',
+      },
+      {
+        label: 'The original, with their nanny Margaretta Eagar, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:OTMA_with_their_nanny_Margaretta_Eagar.jpg',
+      },
+    ],
   },
-  'im-05': {
+  'im-14': {
     answer: 1,
     explanation:
-      'Reverse image search tools like TinEye or Google Lens find other copies of an image. Sorting or scanning for the earliest copies often leads you to the original photographer, date, and location.',
+      'Image B was edited. Image A is the original photo, taken on 19 April 2024. Look just above the left side of the museum\'s roof: Image A shows a tall residential tower in the distance, the Torre de Manila condominium, which became controversial because it appears behind the Rizal Monument in photos. In Image B the tower has been digitally erased, leaving only sky, and the photo was also slightly cropped. The photographer labelled the edit openly on Wikimedia Commons, but once a picture is copied without that label, an edited view can easily pass as the real one.',
+    credits: [
+      {
+        label: 'Image A: National Museum of Fine Arts, Manila, photographed by PhiliptheNumber1 (2024), Wikimedia Commons, CC BY 4.0. Resized for this quiz',
+        url: 'https://commons.wikimedia.org/wiki/File:National_Museum_of_Fine_Arts_(Manila,_2024).jpg',
+      },
+      {
+        label: 'Image B: the same photo, digitally altered to remove Torre de Manila, by PhiliptheNumber1 (2024), Wikimedia Commons, CC BY 4.0. Resized for this quiz',
+        url: 'https://commons.wikimedia.org/wiki/File:National_Museum_of_Fine_Arts_(Manila,_2024)_(digitally_altered_to_remove_Torre_de_Manila).jpg',
+      },
+    ],
   },
-  'im-06': {
+  'im-15': {
     answer: 1,
     explanation:
-      'Reverse image search is powerful but incomplete. An older copy may exist in a private group or on a site the tool has not indexed. A matching date is supportive, not conclusive, so look for other evidence that places the photo in time and location.',
+      'It is a composite. Lincoln was assassinated in 1865 before an impressive standing portrait of him existed, so a printmaker took Lincoln\'s head from a photograph by Mathew Brady and placed it on an 1852 engraving of the Southern politician John C. Calhoun. Even the papers on the table were changed: in Calhoun\'s portrait they read "Strict Construction", "Free Trade", and "The Sovereignty of the States"; here they read "Constitution", "Union", and "Proclamation of Freedom". The side-by-side comparison is linked below. A trusted, famous image can still be a manipulation.',
+    credits: [
+      {
+        label: 'Composite portrait of Abraham Lincoln, published by Rudolf Lesch, New York, 1860s, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:Manipulated_portrait_of_Abraham_Lincoln_(1860%27s).jpg',
+      },
+      {
+        label: 'Side-by-side comparison with the 1852 engraving of John C. Calhoun, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:1852_Calhoun_-_Lincoln_-_photo_manipulation.jpg',
+      },
+    ],
   },
-  'im-07': {
+  'im-16': {
     answer: 1,
     explanation:
-      'Finding each part of the image in a different earlier photo is strong evidence of a composite. Dramatic disaster images are often edited this way because people share them quickly during emergencies.',
+      'It is a composite, made more than a century before AI image generators. The Library of Congress holds this "Kirksville tornado" photo, and comparing it with a real tornado photo taken in Waynoka, Oklahoma, on 17 May 1898 shows that the same tornado was pasted onto a different landscape. Fake disaster photos are nearly as old as photography. The method that exposed this one works today too: search for the same image, or the same distinctive shape, appearing elsewhere with an earlier date.',
+    credits: [
+      {
+        label: '1899 fake tornado photo claimed to show Kirksville, Missouri, Library of Congress, Wikimedia Commons, public domain',
+        url: 'https://commons.wikimedia.org/wiki/File:1899_Kirksville,_Missouri_fake_tornado_photo.png',
+      },
+    ],
   },
-  'im-08': {
-    answer: 1,
-    explanation:
-      'Much visual misinformation uses real photos with false captions. The image is genuine; the story told about it is not. Always ask whether the caption matches what the image actually shows.',
-  },
-  'im-09': {
+  'im-17': {
     answer: 0,
     explanation:
-      'Details inside an image, such as language on signs, which side cars drive on, architecture, and landmarks, can confirm or contradict a claimed location. Here they point to a different place, so the photo should not be used as evidence of a local accident.',
+      'Image A was edited. Image B is the real harbour in Sogndal, Norway, photographed in July 2016, with its large wooden quay building. Image A is a composite by the same photographer, made to show how the harbour could look without that building: the building was removed, and a sandy beach with sunbathers taken from a photo of a beach in Barcelona was added. The photographer labelled it clearly as a "photo composite" on Wikimedia Commons. An honest illustration like this becomes misinformation when it is shared without its label, for example as "Sogndal\'s new beach".',
+    credits: [
+      {
+        label: 'Image A: photo composite of Dampskipskaien, Sogndal, without the quay building, by Bjørn Erik Pedersen, Wikimedia Commons, CC BY 4.0. Resized for this quiz',
+        url: 'https://commons.wikimedia.org/wiki/File:Fotomanipulasjon,_dampskipskaien_i_Sogndal_utan_kaibygg.jpg',
+      },
+      {
+        label: 'Image B: Dampskipskaien in Sogndal, 2016, by Bjørn Erik Pedersen, Wikimedia Commons, CC BY 4.0. Resized for this quiz',
+        url: 'https://commons.wikimedia.org/wiki/File:Dampskipskaien_i_Sogndal_2016.jpg',
+      },
+    ],
   },
-  'im-10': {
-    answer: 1,
+  'im-18': {
+    answer: 2,
     explanation:
-      'When editing tools are used to reshape a body, nearby straight lines in the background often warp too. Warped backgrounds are a common clue in edited body images, especially in ads making extreme claims.',
+      'A real, unedited photo only proves that a flood happened somewhere, at some time. This photo was taken in October 2009, after Typhoon Ondoy (Ketsana) flooded large parts of Luzon, and was published by AusAID, Australia\'s aid agency. It shows nothing about "right now". Old disaster photos are reused all the time because they look convincing and spread quickly. Before sharing, run a reverse image search: if the same photo appears years earlier, the post is misleading even though the photo itself is genuine.',
+    credits: [
+      {
+        label: 'Flooding from Typhoon Ondoy (Ketsana), Philippines, 2009, photo: AusAID (Australian Department of Foreign Affairs and Trade), Wikimedia Commons, CC BY 2.0. Resized for this quiz',
+        url: 'https://commons.wikimedia.org/wiki/File:Flooding_from_Typhoon_Ondoy_(Ketsana),_Philippines_2009._Photo-_AusAID_(10695910543).jpg',
+      },
+    ],
+  },
+  'im-19': {
+    answer: 2,
+    explanation:
+      'It is a real photo used out of context. Dave Harlow of the US Geological Survey took it on 12 June 1991, showing the eruption column of Mount Pinatubo from Clark Air Base, days before Pinatubo\'s huge eruption of 15 June. It shows a different volcano, more than 30 years earlier. Nothing in the picture was edited, which is why this kind of misinformation is so effective. During a real emergency, rely on official sources such as PHIVOLCS (the Philippine Institute of Volcanology and Seismology) instead of dramatic photos from unknown accounts.',
+    credits: [
+      {
+        label: 'Mount Pinatubo eruption column, 12 June 1991, photo by Dave Harlow, US Geological Survey, Wikimedia Commons, public domain. Resized for this quiz',
+        url: 'https://commons.wikimedia.org/wiki/File:Pinatubo_1991-06-12_(USGS).jpg',
+      },
+      {
+        label: 'PHIVOLCS: official volcano bulletins in the Philippines',
+        url: 'https://www.phivolcs.dost.gov.ph',
+      },
+    ],
+  },
+  'im-20': {
+    answer: 3,
+    explanation:
+      'Neither photo was edited, and here the caption is accurate. Both are documented photos of the aftermath of Typhoon Ondoy (Ketsana) in 2009: Image A was published by AusAID, Australia\'s aid agency, and Image B comes from a set of photos posted on 27 September 2009, the day after the storm. Their sources match the caption\'s event and date. Checking is not only for catching fakes; it also lets you share real information with confidence. Calling every dramatic photo "fake" is a mistake too.',
+    credits: [
+      {
+        label: 'Image A: Flooding from Typhoon Ondoy (Ketsana), Philippines, 2009, photo: AusAID (Australian Department of Foreign Affairs and Trade), Wikimedia Commons, CC BY 2.0. Resized for this quiz',
+        url: 'https://commons.wikimedia.org/wiki/File:Flooding_from_Typhoon_Ondoy_(Ketsana),_Philippines_2009._Photo-_AusAID_(10695725136).jpg',
+      },
+      {
+        label: 'Image B: Ondoy aftermath, 27 September 2009, from Dan Saavedra via The Philippine Online Chronicles, Wikimedia Commons, CC BY 2.0. Resized for this quiz',
+        url: 'https://commons.wikimedia.org/wiki/File:Ondoy_(3967857165).jpg',
+      },
+    ],
   },
   // misleadingInformation.js
   'mi-01': {

@@ -113,6 +113,24 @@ describe('answer check (instant feedback)', () => {
     for (const credit of pair.body.data.credits) expect(credit.url).toMatch(/^https:\/\/commons\.wikimedia\.org\/wiki\/File:/)
   })
 
+  it('serves the image manipulation photos without anything that gives away which one was edited', async () => {
+    const list = await request(ctx.app).get(`${API}/quizzes/image-manipulation/questions`).expect(200)
+    const questions = list.body.data.questions
+    expect(questions).toHaveLength(10)
+    for (const question of questions) {
+      const pictures = question.images ?? [question.image]
+      for (const picture of pictures) expect(picture.src).toMatch(/^\/quiz-images\/edit-\d{2}\.jpg$/)
+      expect(JSON.stringify(pictures)).not.toMatch(/edited|removed|deleted|composite|fake|original|altered|commons/i)
+      expect(question).not.toHaveProperty('credits')
+    }
+    const res = await request(ctx.app)
+      .post(`${API}/quizzes/image-manipulation/check`)
+      .send({ questionId: 'im-11', selectedAnswer: getQuestion('im-11').answer })
+      .expect(200)
+    expect(res.body.data.isCorrect).toBe(true)
+    expect(res.body.data.credits).toHaveLength(2)
+  })
+
   it('accepts any topic question in the Mixed Challenge but rejects questions from other categories', async () => {
     await request(ctx.app).post(`${API}/quizzes/${MIXED_CATEGORY_ID}/check`).send({ questionId: 'df-22', selectedAnswer: 0 }).expect(200)
     const res = await request(ctx.app).post(`${API}/quizzes/fact-checking/check`).send({ questionId: 'df-22', selectedAnswer: 0 }).expect(422)
