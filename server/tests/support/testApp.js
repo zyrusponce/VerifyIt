@@ -1,5 +1,6 @@
 // Builds the real Express app on top of the real migrations (PGlite). Only token verification is
 // replaced: tokens issued by signUp() map to users, every other token is rejected like Supabase would.
+// AI provider calls go through `fetch`, which a test may replace with a mock.
 import { createApp } from '../../src/app.js'
 import { loadConfig } from '../../src/config/env.js'
 import { createLogger } from '../../src/utils/logger.js'
@@ -16,7 +17,12 @@ export const TEST_ENV = {
   CERTIFICATE_TIMEZONE: 'Asia/Manila',
 }
 
-export async function createTestContext() {
+/**
+ * @param {object} [overrides]
+ * @param {Record<string, string>} [overrides.env] extra environment values (for example AI provider keys)
+ * @param {typeof fetch} [overrides.fetch] replaces the fetch used to call AI providers
+ */
+export async function createTestContext({ env = {}, fetch } = {}) {
   const db = await createTestDatabase()
   const tokens = new Map()
   const auth = {
@@ -26,13 +32,13 @@ export async function createTestContext() {
       return user
     },
   }
-  const config = loadConfig(TEST_ENV)
+  const config = loadConfig({ ...TEST_ENV, ...env })
   const app = createApp({
     config,
     auth,
     repositories: createPgliteRepositories(db),
     logger: createLogger({ level: 'silent' }),
-    options: { rateLimit: { enabled: false } },
+    options: { rateLimit: { enabled: false }, fetch },
   })
 
   async function signUp(displayName) {

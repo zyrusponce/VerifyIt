@@ -30,6 +30,20 @@ const originList = z
     return origins
   })
 
+// The AI Investigation Assistant is optional: a blank value counts as unset, so an empty line in .env or
+// an unset Worker secret only disables that provider instead of stopping the server.
+const blankAsUnset = (inner) => z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), inner)
+const NO_SPACES = /^[\x21-\x7e]+$/
+const aiApiKey = blankAsUnset(z.string().trim().max(512).regex(NO_SPACES, 'must be the API key only, without spaces').optional())
+const modelId = z.string().trim().max(200).regex(NO_SPACES, 'must be a model id such as vendor/model')
+const aiModel = (fallback) => blankAsUnset(modelId.default(fallback))
+
+export const AI_PROVIDER_DEFAULTS = Object.freeze({
+  // visionModel reads attached images. Gemma reads text and images; Groq's gpt-oss reads text only, so Groq uses Qwen for images.
+  openrouter: { url: 'https://openrouter.ai/api/v1/chat/completions', model: 'google/gemma-4-31b-it:free' },
+  groq: { url: 'https://api.groq.com/openai/v1/chat/completions', model: 'openai/gpt-oss-120b', visionModel: 'qwen/qwen3.8-27b' },
+})
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
@@ -51,7 +65,36 @@ const schema = z.object({
       }
     }, 'must be a valid IANA time zone such as Asia/Manila'),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error', 'silent']).optional(),
+  // AI Investigation Assistant: OpenRouter is tried first, Groq once as the fallback.
+  OPENROUTER_API_KEY: aiApiKey,
+  OPENROUTER_MODEL: aiModel(AI_PROVIDER_DEFAULTS.openrouter.model),
+  // Unset: OPENROUTER_MODEL also reads images.
+  OPENROUTER_VISION_MODEL: blankAsUnset(modelId.optional()),
+  GROQ_API_KEY: aiApiKey,
+  GROQ_MODEL: aiModel(AI_PROVIDER_DEFAULTS.groq.model),
+  GROQ_VISION_MODEL: aiModel(AI_PROVIDER_DEFAULTS.groq.visionModel),
+  // Per provider attempt. Two attempts must fit inside the frontend's 70 s request timeout.
+  AI_TIMEOUT_MS: blankAsUnset(z.coerce.number().int().min(1000).max(30_000).default(25_000)),
+  // Optional: Google Fact Check Tools API key for the "What Other Sources Say" check. Unset turns that check off.
+  GOOGLE_FACT_CHECK_API_KEY: aiApiKey,
+  // Optional: Tavily API key for finding other news reports of the same story. Unset turns the news search off.
+  TAVILY_API_KEY: aiApiKey,
 })
+
+/** Providers that have an API key, in the order they are tried. */
+function aiProviders(values) {
+  const providers = [
+    {
+      name: 'openrouter',
+      ...AI_PROVIDER_DEFAULTS.openrouter,
+      model: values.OPENROUTER_MODEL,
+      visionModel: values.OPENROUTER_VISION_MODEL ?? values.OPENROUTER_MODEL,
+      apiKey: values.OPENROUTER_API_KEY,
+    },
+    { name: 'groq', ...AI_PROVIDER_DEFAULTS.groq, model: values.GROQ_MODEL, visionModel: values.GROQ_VISION_MODEL, apiKey: values.GROQ_API_KEY },
+  ]
+  return Object.freeze(providers.filter((provider) => provider.apiKey).map((provider) => Object.freeze(provider)))
+}
 
 const isLocalHost = (url) => ['localhost', '127.0.0.1', '[::1]', '0.0.0.0'].includes(new URL(url).hostname)
 
@@ -100,5 +143,10 @@ export function loadConfig(env = process.env) {
     trustProxy: values.TRUST_PROXY,
     certificateTimeZone: values.CERTIFICATE_TIMEZONE,
     logLevel: values.LOG_LEVEL ?? (values.NODE_ENV === 'test' ? 'silent' : 'info'),
+    // `apiKey` matches the logger's secret pattern, so a provider object is redacted if it is ever logged.
+    ai: Object.freeze({ timeoutMs: values.AI_TIMEOUT_MS, providers: aiProviders(values) }),
+    // `apiKey` matches the logger's secret pattern too.
+    factCheck: Object.freeze({ apiKey: values.GOOGLE_FACT_CHECK_API_KEY ?? null }),
+    newsSearch: Object.freeze({ apiKey: values.TAVILY_API_KEY ?? null }),
   })
 }

@@ -1,7 +1,7 @@
-/** Friendly placeholder shown when there is no data yet. */
-export default function EmptyState({ icon: Icon, title, description, children }) {
+/** Friendly placeholder shown when there is no data yet. `compact` uses less vertical space (for narrow panels). */
+export default function EmptyState({ icon: Icon, title, description, compact = false, children }) {
   return (
-    <div className="rounded-md border border-dashed border-slate-300 bg-paper px-6 py-12 text-center">
+    <div className={`rounded-md border border-dashed border-slate-300 bg-paper text-center ${compact ? 'px-5 py-8' : 'px-6 py-12'}`}>
       {Icon && (
         <span className="mx-auto grid size-12 place-items-center rounded-md bg-white text-navy-700 ring-1 ring-slate-200">
           <Icon className="size-6" aria-hidden="true" />

@@ -1,7 +1,9 @@
 /*
   ⚡ LAYER: Controller (application assembly)
-  🔒 SECURITY: Helmet headers; CORS limited to FRONTEND_URL origins; 32 KB JSON body limit; per-IP
-     rate limits; every user route authenticated through Supabase Auth; consistent JSON responses.
+  🔒 SECURITY: Helmet headers; CORS limited to FRONTEND_URL origins; 32 KB JSON body limit (AI analysis,
+     which carries images, reads its own larger body after sign-in is checked); per-IP rate limits (plus
+     per-user limits on the AI assistant); every user route authenticated through Supabase Auth; AI provider
+     keys used only server-side; consistent JSON responses.
   🚨 ERROR HANDLING: Unknown routes → 404 ROUTE_NOT_FOUND; all thrown/rejected errors reach the global
      error handler, which maps them to explicit status codes and logs them with the request id.
 */
@@ -20,6 +22,10 @@ import { createInvestigationsRouter } from './routes/investigations.routes.js'
 import { createToolkitRouter } from './routes/toolkit.routes.js'
 import { createDashboardRouter } from './routes/dashboard.routes.js'
 import { createCertificatesRouter } from './routes/certificates.routes.js'
+import { AI_ANALYZE_PATH, createAiRouter } from './routes/ai.routes.js'
+import { createAiGateway } from './services/aiProviders.service.js'
+import { createLinkReader } from './services/linkReader.service.js'
+import { createFactChecker, createNewsSearcher } from './services/sourceCheck.service.js'
 
 export const API_PREFIX = '/api/v1'
 
@@ -29,7 +35,8 @@ export const API_PREFIX = '/api/v1'
  * @param {{ verifyToken(token: string): Promise<{ id: string, email: string | null }> }} deps.auth
  * @param {{ forUser(token: string, userId: string): object, public(): object }} deps.repositories
  * @param {ReturnType<import('./utils/logger.js').createLogger>} deps.logger
- * @param {{ rateLimit?: { enabled?: boolean } }} [deps.options]
+ * @param {{ rateLimit?: { enabled?: boolean }, fetch?: typeof fetch }} [deps.options] `fetch` replaces the
+ *   runtime fetch used to call the AI providers, read links, and search fact-checks (tests only).
  */
 export function createApp({ config, auth, repositories, logger, options = {} }) {
   const app = express()
@@ -50,7 +57,8 @@ export function createApp({ config, auth, repositories, logger, options = {} }) 
       maxAge: 600,
     }),
   )
-  app.use(express.json({ limit: '32kb', strict: true }))
+  const jsonBody = express.json({ limit: '32kb', strict: true })
+  app.use((req, res, next) => (req.path === `${API_PREFIX}${AI_ANALYZE_PATH}` ? next() : jsonBody(req, res, next)))
 
   const limiters = createRateLimiters(options.rateLimit)
   const deps = {
@@ -59,6 +67,10 @@ export function createApp({ config, auth, repositories, logger, options = {} }) 
     limiters,
     repositories,
     authenticate: createAuthenticate({ auth, repositories }),
+    ai: createAiGateway({ config, logger, fetch: options.fetch }),
+    linkReader: createLinkReader({ config, logger, fetch: options.fetch }),
+    factChecker: createFactChecker({ config, logger, fetch: options.fetch }),
+    newsSearcher: createNewsSearcher({ config, logger, fetch: options.fetch }),
   }
 
   const api = express.Router()
@@ -71,6 +83,7 @@ export function createApp({ config, auth, repositories, logger, options = {} }) 
   api.use(createToolkitRouter(deps))
   api.use(createDashboardRouter(deps))
   api.use(createCertificatesRouter(deps))
+  api.use(createAiRouter(deps))
   app.use(API_PREFIX, api)
 
   app.use(notFoundHandler)

@@ -53,6 +53,83 @@ describe('environment validation', () => {
   })
 })
 
+describe('AI provider configuration', () => {
+  it('boots with the assistant off when no provider key is set', () => {
+    const config = loadConfig(TEST_ENV)
+    expect(config.ai).toEqual({ timeoutMs: 25_000, providers: [] })
+  })
+
+  it('treats blank AI settings as unset', () => {
+    const config = loadConfig({ ...TEST_ENV, OPENROUTER_API_KEY: '', GROQ_API_KEY: '   ', OPENROUTER_MODEL: '', GROQ_MODEL: ' ', AI_TIMEOUT_MS: '' })
+    expect(config.ai).toEqual({ timeoutMs: 25_000, providers: [] })
+  })
+
+  it('lists configured providers OpenRouter first, with the default models', () => {
+    const config = loadConfig({ ...TEST_ENV, GROQ_API_KEY: ' groq-placeholder ', OPENROUTER_API_KEY: 'openrouter-placeholder' })
+    expect(config.ai.providers).toEqual([
+      {
+        name: 'openrouter',
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        model: 'google/gemma-4-31b-it:free',
+        visionModel: 'google/gemma-4-31b-it:free',
+        apiKey: 'openrouter-placeholder',
+      },
+      {
+        name: 'groq',
+        url: 'https://api.groq.com/openai/v1/chat/completions',
+        model: 'openai/gpt-oss-120b',
+        visionModel: 'qwen/qwen3.8-27b',
+        apiKey: 'groq-placeholder',
+      },
+    ])
+    expect(Object.isFrozen(config.ai.providers[0])).toBe(true)
+  })
+
+  it('uses the text model for images unless an image model is set', () => {
+    const config = loadConfig({
+      ...TEST_ENV,
+      OPENROUTER_API_KEY: 'openrouter-placeholder',
+      OPENROUTER_MODEL: 'vendor/text-model',
+      GROQ_API_KEY: 'groq-placeholder',
+      GROQ_VISION_MODEL: 'vendor/vision-model',
+    })
+    expect(config.ai.providers.map(({ name, visionModel }) => ({ name, visionModel }))).toEqual([
+      { name: 'openrouter', visionModel: 'vendor/text-model' },
+      { name: 'groq', visionModel: 'vendor/vision-model' },
+    ])
+    const separate = loadConfig({ ...TEST_ENV, OPENROUTER_API_KEY: 'openrouter-placeholder', OPENROUTER_VISION_MODEL: 'vendor/vision-model' })
+    expect(separate.ai.providers[0]).toMatchObject({ model: 'google/gemma-4-31b-it:free', visionModel: 'vendor/vision-model' })
+  })
+
+  it('keeps only providers that have a key and accepts model and timeout overrides', () => {
+    const config = loadConfig({ ...TEST_ENV, GROQ_API_KEY: 'groq-placeholder', GROQ_MODEL: 'llama-3.3-70b-versatile', AI_TIMEOUT_MS: '15000' })
+    expect(config.ai.timeoutMs).toBe(15_000)
+    expect(config.ai.providers.map(({ name, model }) => ({ name, model }))).toEqual([{ name: 'groq', model: 'llama-3.3-70b-versatile' }])
+  })
+
+  it('rejects malformed AI settings without echoing them', () => {
+    expect(() => loadConfig({ ...TEST_ENV, AI_TIMEOUT_MS: '50' })).toThrow(/AI_TIMEOUT_MS/)
+    expect(() => loadConfig({ ...TEST_ENV, AI_TIMEOUT_MS: '600000' })).toThrow(/AI_TIMEOUT_MS/)
+    try {
+      loadConfig({ ...TEST_ENV, OPENROUTER_API_KEY: 'placeholder with spaces' })
+      throw new Error('expected loadConfig to fail')
+    } catch (error) {
+      expect(error).toBeInstanceOf(ConfigError)
+      expect(error.message).toContain('OPENROUTER_API_KEY')
+      expect(error.message).not.toContain('placeholder with spaces')
+    }
+  })
+
+  it('redacts provider API keys if a provider is ever logged', () => {
+    const lines = []
+    const logger = createLogger({ level: 'debug', write: (_level, line) => lines.push(JSON.parse(line)) })
+    const config = loadConfig({ ...TEST_ENV, OPENROUTER_API_KEY: 'openrouter-placeholder' })
+    logger.warn('provider', { provider: config.ai.providers[0] })
+    expect(lines[0].provider).toMatchObject({ name: 'openrouter', apiKey: '[redacted]' })
+    expect(JSON.stringify(lines)).not.toContain('openrouter-placeholder')
+  })
+})
+
 describe('structured logger', () => {
   it('redacts secrets at any depth', () => {
     const lines = []

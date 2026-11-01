@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
+import AiAssistantLauncher from './AiAssistantLauncher'
 import Navbar from './Navbar'
 import Footer from './Footer'
 import PageBackdrop from './PageBackdrop'
@@ -43,6 +44,7 @@ export default function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <AiAssistantLauncher />
     </div>
   )
 }

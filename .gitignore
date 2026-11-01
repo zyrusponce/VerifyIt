@@ -11,6 +11,11 @@ server/.env
 server/.env.*
 !server/.env.example
 wrangler-secrets.env
+# The AI assistant spec holds real provider API keys. Keep it local: never commit it.
+instructions/NewFeature.md
 # Local Cloudflare (wrangler/Miniflare) state and generated Vercel build output
 .wrangler/
 dist-vercel/
+# Local Cloudflare Worker settings for "npm run dev" (copied from server/.env). Holds secrets: never commit.
+.dev.vars
+.dev.vars.*

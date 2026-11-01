@@ -9,6 +9,7 @@ import Quiz from './pages/Quiz'
 import QuizCategory from './pages/QuizCategory'
 import Results from './pages/Results'
 import Toolkit from './pages/Toolkit'
+import AiAssistant from './pages/AiAssistant'
 import About from './pages/About'
 import Login from './pages/Login'
 import Register from './pages/Register'
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="quiz" element={<Quiz />} />
         <Route path="quiz/:categoryId" element={<QuizCategory />} />
         <Route path="toolkit" element={<Toolkit />} />
+        <Route path="assistant" element={<AiAssistant />} />
         <Route path="results" element={<Results />} />
         <Route path="about" element={<About />} />
         <Route path="login" element={<Login />} />
