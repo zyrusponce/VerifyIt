@@ -7,6 +7,8 @@ dist
 .env
 .env.*
 !.env.example
+# Public build settings (Supabase URL and publishable key): committed so automatic builds have them.
+!.env.production
 server/.env
 server/.env.*
 !server/.env.example
