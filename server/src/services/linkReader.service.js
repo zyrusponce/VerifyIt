@@ -527,6 +527,51 @@ function composeText({ title, siteName, author, published, body }) {
   return { text: (boundary > AI_CONTENT_MAX_LENGTH * 0.8 ? slice.slice(0, boundary) : slice).trimEnd(), cut: true }
 }
 
+/* ------------------------------------------------------------------------------------- Extraction service */
+
+export const EXTRACT_URL = 'https://api.tavily.com/extract'
+export const EXTRACT_TIMEOUT_MS = 8000
+const PARAGRAPH_MIN = 60
+const MAX_GAP = 3
+// Lines of consent notices and site boilerplate, which can be long enough to look like article text.
+const NOTICE_LINE = /\b(?:cookies?|tracking technologies|privacy policy|terms of (?:use|service)|all rights reserved|copyright|opt[- ]out|do not sell)\b/i
+
+/**
+ * The article inside a whole-page text dump: the longest run of sentence-like lines (long, ending in punctuation),
+ * allowing a few short lines (sub-headings) inside it. Menus, headline lists and consent notices are not sentences.
+ */
+export function articleFromDump(raw) {
+  const lines = String(raw ?? '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+  const isParagraph = (line) => line.length >= PARAGRAPH_MIN && /[.!?…]["'”’)]*$/.test(line) && !NOTICE_LINE.test(line)
+  let best = null
+  let current = null
+  let gap = 0
+  lines.forEach((line, index) => {
+    if (isParagraph(line)) {
+      current ??= { start: index, end: index, chars: 0 }
+      current.end = index
+      current.chars += line.length
+      gap = 0
+      if (!best || current.chars > best.chars) best = current
+    } else if (current && line) {
+      gap += 1
+      if (gap > MAX_GAP) current = null
+    }
+  })
+  if (!best) return ''
+  return tidyText(lines.slice(best.start, best.end + 1).filter(Boolean).join('\n\n'))
+}
+
+/** Failures that look like the site turning the reader away (not a missing page, a social site, or a bad link). */
+function looksBlocked(failure) {
+  if (failure.code === 'LINK_TIMEOUT' || failure.code === 'LINK_NO_TEXT') return true
+  const status = failure.cause?.status
+  return failure.code === 'LINK_FETCH_FAILED' && (status === 401 || status === 403 || status === 429 || status === 451 || status >= 500)
+}
+
 /**
  * @param {object} deps
  * @param {ReturnType<import('../config/env.js').loadConfig>} deps.config
@@ -537,6 +582,37 @@ export function createLinkReader({ config, logger, fetch: fetchImpl, timeoutMs =
   // Called through globalThis: Cloudflare Workers throws "Illegal invocation" for a detached fetch.
   const send = fetchImpl ?? ((input, init) => globalThis.fetch(input, init))
   const userAgent = `Mozilla/5.0 (compatible; VerifyIT-LinkReader/1.0; +${config.publicAppUrl})`
+  const extractorKey = config.newsSearch?.apiKey ?? null
+
+  /**
+   * Second attempt for a page that turned the reader away: Tavily's extraction service fetches it from its own network.
+   * The link was already checked by the first attempt and nothing of ours is reachable from there. Resolves with the
+   * page in the usual shape, or null when it cannot help (the original failure is then reported).
+   */
+  async function readViaExtractor(link, requestId) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), EXTRACT_TIMEOUT_MS)
+    try {
+      const response = await send(EXTRACT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${extractorKey}` },
+        body: JSON.stringify({ urls: [link], extract_depth: 'basic', format: 'text' }),
+        signal: controller.signal,
+      })
+      const body = await response.json().catch(() => null)
+      const page = response.ok && Array.isArray(body?.results) ? body.results[0] : null
+      const article = page ? articleFromDump(page.raw_content) : ''
+      if (article.length < MIN_TEXT_LENGTH) return null
+      const title = tidyLine(page.title, 300)
+      const { text, cut } = composeText({ title, siteName: '', author: '', published: '', body: article })
+      return { url: link, host: new URL(link).hostname, title: title || null, siteName: null, author: null, published: null, text, truncated: cut, via: 'extractor' }
+    } catch (error) {
+      logger.warn('link extraction failed', { requestId, kind: controller.signal.aborted ? 'timeout' : 'network' })
+      return null
+    } finally {
+      clearTimeout(timer)
+    }
+  }
 
   return {
     /** Reads the readable text of a public web page. Throws AppError with a message safe to show. */
@@ -587,11 +663,16 @@ export function createLinkReader({ config, logger, fetch: fetchImpl, timeoutMs =
           published: extracted.published || null,
           text,
           truncated: cut || body.cut,
+          via: 'direct',
         }
       } catch (error) {
         const failure =
           error instanceof AppError ? error : controller.signal.aborted ? timedOut() : unreachable(`unexpected error (${error?.name})`)
         logger.warn('link read failed', { requestId, host, code: failure.code, status: failure.cause?.status ?? null, reason: failure.cause?.reason ?? null })
+        if (extractorKey && looksBlocked(failure)) {
+          const page = await readViaExtractor(link, requestId)
+          if (page) return page
+        }
         throw failure
       } finally {
         clearTimeout(timer)
