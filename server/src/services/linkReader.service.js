@@ -153,7 +153,8 @@ const REDIRECTS = new Set([301, 302, 303, 307, 308])
 function fetchFailed(status) {
   let message = `The website did not send the page (error ${status}). Copy the text from the page instead.`
   if (status === 401 || status === 403 || status === 451) {
-    message = 'The website refused to share this page. It may need you to sign in, or it blocks automatic readers. Copy the text from the page instead.'
+    message =
+      'The website refused to share this page. It may need you to sign in, or it blocks automatic readers. Copy the text into the box, or take a screenshot of the page and attach it.'
   } else if (status === 404 || status === 410) {
     message = 'The website says this page does not exist. Check the link and try again.'
   } else if (status === 429) {
@@ -602,7 +603,11 @@ export function createLinkReader({ config, logger, fetch: fetchImpl, timeoutMs =
       const body = await response.json().catch(() => null)
       const page = response.ok && Array.isArray(body?.results) ? body.results[0] : null
       const article = page ? articleFromDump(page.raw_content) : ''
-      if (article.length < MIN_TEXT_LENGTH) return null
+      if (article.length < MIN_TEXT_LENGTH) {
+        // Says why the service could not help (never the link or the page): it could not fetch it, or found no article text.
+        logger.warn('link extraction found nothing', { requestId, status: response.status, fetched: Boolean(page), articleChars: article.length })
+        return null
+      }
       const title = tidyLine(page.title, 300)
       const { text, cut } = composeText({ title, siteName: '', author: '', published: '', body: article })
       return { url: link, host: new URL(link).hostname, title: title || null, siteName: null, author: null, published: null, text, truncated: cut, via: 'extractor' }
