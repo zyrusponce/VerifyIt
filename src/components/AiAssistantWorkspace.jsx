@@ -178,6 +178,11 @@ function describeLinkError(error, { signedIn = false } = {}) {
   return error?.message ?? 'The page could not be read. Copy the text from the page instead.'
 }
 
+// Failures where the page itself is fine for a person but not for the reader (blocked, no text, too slow, social media):
+// a screenshot or the pasted text gets the student further, so those errors offer both.
+const COPYABLE_LINK_ERRORS = new Set(['LINK_FETCH_FAILED', 'LINK_NO_TEXT', 'LINK_TIMEOUT', 'LINK_SOCIAL_MEDIA'])
+const pageCanBeCopied = (error) => COPYABLE_LINK_ERRORS.has(error?.code)
+
 /** Copies text, falling back to a hidden textarea where the Clipboard API is missing or blocked. */
 async function copyText(text) {
   if (navigator.clipboard?.writeText && window.isSecureContext) {
@@ -1022,7 +1027,22 @@ function AnalysisWorkspace({ compact, links }) {
               </Alert>
             )}
             {link.status === 'error' && (
-              <Alert tone="error" title="The page could not be read">
+              <Alert
+                tone="error"
+                title="The page could not be read"
+                action={
+                  pageCanBeCopied(link.error) && (
+                    <>
+                      <Button size="sm" variant="secondary" icon={ImagePlus} iconPosition="left" onClick={() => fileInputRef.current?.click()} disabled={loading || imagesFull || preparingImages}>
+                        Attach a screenshot
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => textareaRef.current?.focus()} disabled={loading}>
+                        Paste the text
+                      </Button>
+                    </>
+                  )
+                }
+              >
                 {describeLinkError(link.error, { signedIn: authStatus === 'signedIn' })}
               </Alert>
             )}
