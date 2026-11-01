@@ -13,7 +13,6 @@ import {
 import Card from '../components/Card'
 import PageHeader from '../components/PageHeader'
 import SectionHeading from '../components/SectionHeading'
-import { projectInfo, team } from '../data/team'
 import { references } from '../data/references'
 
 const objectives = [
@@ -44,16 +43,6 @@ const citizenship = [
   'Correct your own mistakes publicly when you share something false.',
   'Support reliable sources of information in your community.',
 ]
-
-function initials(name) {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-}
 
 export default function About() {
   const PrimaryIcon = primaryAudience.icon
@@ -174,37 +163,6 @@ export default function About() {
               ))}
             </ul>
           </Card>
-        </section>
-
-        {/* Team */}
-        <section id="team" className="scroll-mt-24">
-          <SectionHeading eyebrow="Team members" title="The people behind VerifyIT" />
-          <ul className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {team.map((member) => (
-              <li key={member.name}>
-                <Card className="h-full text-center">
-                  {member.photo ? (
-                    <img src={member.photo} alt={member.name} className="mx-auto size-20 rounded-full object-cover" />
-                  ) : (
-                    <span className="mx-auto grid size-20 place-items-center rounded-full bg-navy-100 font-display text-xl font-bold text-navy-800" aria-hidden="true">
-                      {initials(member.name)}
-                    </span>
-                  )}
-                  <h3 className="mt-4 text-lg font-bold">{member.name}</h3>
-                  <p className="text-sm font-medium text-cyan-700">{member.role}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-slate-600">{member.contribution}</p>
-                </Card>
-              </li>
-            ))}
-          </ul>
-          <dl className="mt-8 flex flex-wrap gap-x-12 gap-y-3 rounded-md border border-slate-200 bg-paper p-5 text-sm">
-            {projectInfo.map((info) => (
-              <div key={info.label}>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{info.label}</dt>
-                <dd className="mt-0.5 font-medium text-navy-900">{info.value}</dd>
-              </div>
-            ))}
-          </dl>
         </section>
 
         {/* References */}

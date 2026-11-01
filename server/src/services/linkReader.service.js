@@ -3,7 +3,8 @@
   🔒 SECURITY: Reads public web pages only. A link is refused before any request when it carries a user name or
      password, uses a port other than 80/443, names a local or single-label host, or is an IP address that is not
      public. Host names are resolved first (DNS over HTTPS) and refused when any address is not public. Redirects
-     are followed by hand, at most 3, and every hop is checked again. Only HTML and plain text are read, at most
+     are followed by hand, at most 3, and every hop is checked again. On social media sites only the post's link
+     preview (og:title, og:description) is read, and a sign-in wall counts as unreadable. Only HTML and plain text are read, at most
      2 MB, within one 10-second budget for the whole read. Nothing is stored; failures are logged with the host
      name and the failure kind only, never the page or the full link.
   🚨 ERROR HANDLING: 422 LINK_NOT_ALLOWED / LINK_SOCIAL_MEDIA / LINK_UNSUPPORTED_TYPE / LINK_NO_TEXT;
@@ -19,11 +20,23 @@ const MIN_TEXT_LENGTH = 80
 const DOH_URL = 'https://cloudflare-dns.com/dns-query'
 const READABLE_TYPES = new Set(['text/html', 'application/xhtml+xml', 'text/plain', ''])
 
-// These sites show posts only to signed-in visitors (or only as video), so a link to them has no readable text.
-const SIGN_IN_SITES = [
+// These sites show the full post only to signed-in visitors (or only as video). Their pages still carry the preview
+// that every link preview uses (og:title and og:description), so only that preview is read from them.
+const SOCIAL_SITES = [
   'facebook.com', 'fb.com', 'fb.watch', 'messenger.com', 'instagram.com', 'threads.net', 'threads.com', 'x.com',
   'twitter.com', 'tiktok.com', 'linkedin.com', 'snapchat.com', 'youtube.com', 'youtu.be',
 ]
+const isSocialSite = (host) => SOCIAL_SITES.some((site) => host === site || host.endsWith(`.${site}`))
+// A sign-in wall's own preview ("Log in to Facebook…") is not the post.
+const SIGN_IN_PROMPT = /^(?:log ?in|log into|sign ?in|sign up|create an account)\b|start sharing and connecting|see posts, photos and more|share what you're into/i
+const SOCIAL_PREVIEW_MAX = 3000
+
+const socialUnreadable = () =>
+  linkError(
+    422,
+    'LINK_SOCIAL_MEDIA',
+    'We could not read this post. It may be private or deleted, or the site shows it only to signed-in users (TikTok videos cannot be read from a link). Copy the post text into the box, or take a screenshot and attach it.',
+  )
 // Top-level names that never belong to a public website.
 const LOCAL_SUFFIXES = ['localhost', 'local', 'localdomain', 'internal', 'intranet', 'lan', 'home', 'corp', 'test', 'invalid', 'example', 'onion', 'arpa']
 
@@ -180,13 +193,6 @@ async function fetchPage(start, { send, signal, userAgent }) {
   let url = start
   for (let hop = 0; ; hop += 1) {
     const { host, isAddress } = checkLink(url)
-    if (SIGN_IN_SITES.some((site) => host === site || host.endsWith(`.${site}`))) {
-      throw linkError(
-        422,
-        'LINK_SOCIAL_MEDIA',
-        'Posts on social media and video sites (like Facebook, Instagram, X, TikTok, and YouTube) cannot be read from a link, because those sites need you to sign in. Copy the post text into the box, or take a screenshot and attach it.',
-      )
-    }
     if (!isAddress) await checkResolvedAddresses(host, { send, signal })
 
     let response
@@ -201,7 +207,7 @@ async function fetchPage(start, { send, signal, userAgent }) {
       if (signal.aborted) throw timedOut()
       throw unreachable(`request failed (${error?.name})`)
     }
-    if (!REDIRECTS.has(response.status)) return { response, url, host }
+    if (!REDIRECTS.has(response.status)) return { response, url, host, social: isSocialSite(host) }
 
     await cancelBody(response)
     const location = response.headers.get('location')
@@ -380,13 +386,34 @@ function formatPublished(value) {
   return Number.isNaN(date.getTime()) ? tidyLine(value, 60) : date.toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' })
 }
 
-function readMetadata(html) {
+/** The page's <meta> tags by property, name, or itemprop (the first of each). */
+function metaTags(html) {
   const meta = {}
   for (const [tag] of html.matchAll(/<meta\b[^<>]*>/gi)) {
     const attributes = attributesOf(tag)
     const key = (attributes.property ?? attributes.name ?? attributes.itemprop)?.toLowerCase()
     if (key && attributes.content && !(key in meta)) meta[key] = attributes.content
   }
+  return meta
+}
+
+/**
+ * The link preview of a social media post: its title and description, which hold the post's text (often shortened).
+ * Line breaks in the description are kept, since posts are often written in short lines.
+ */
+export function readSocialPreview(html) {
+  const meta = metaTags(html)
+  const description = [meta['og:description'], meta['twitter:description'], meta.description].find((value) => value?.trim()) ?? ''
+  const body = tidyText(decodeEntities(description))
+  return {
+    title: tidyLine(meta['og:title'] ?? meta['twitter:title'], 300),
+    siteName: tidyLine(meta['og:site_name']),
+    body: body.length > SOCIAL_PREVIEW_MAX ? `${body.slice(0, SOCIAL_PREVIEW_MAX - 1).trimEnd()}…` : body,
+  }
+}
+
+function readMetadata(html) {
+  const meta = metaTags(html)
   const jsonLd = readJsonLd(html)
   const firstOf = (...values) => values.map((value) => tidyLine(value)).find(Boolean) ?? ''
   const titleTag = /<title\b[^<>]*>([^<]*)/i.exec(html)?.[1]
@@ -632,13 +659,13 @@ export function createLinkReader({ config, logger, fetch: fetchImpl, timeoutMs =
         const { response } = page
         if (!response.ok) {
           await cancelBody(response)
-          throw fetchFailed(response.status)
+          throw page.social ? socialUnreadable() : fetchFailed(response.status)
         }
         const contentType = response.headers.get('content-type') ?? ''
         const type = contentType.split(';')[0].trim().toLowerCase()
         if (!READABLE_TYPES.has(type)) {
           await cancelBody(response)
-          throw unsupportedType(type)
+          throw page.social ? socialUnreadable() : unsupportedType(type)
         }
 
         let body
@@ -649,6 +676,22 @@ export function createLinkReader({ config, logger, fetch: fetchImpl, timeoutMs =
           throw unreachable(`body unreadable (${error?.name})`)
         }
         const source = decodeText(body.bytes, contentType)
+        if (page.social) {
+          const preview = readSocialPreview(source)
+          if (!preview.body || SIGN_IN_PROMPT.test(preview.body)) throw socialUnreadable()
+          const { text, cut } = composeText({ title: preview.title, siteName: preview.siteName, author: '', published: '', body: preview.body })
+          return {
+            url: page.url.href,
+            host,
+            title: preview.title || null,
+            siteName: preview.siteName || null,
+            author: null,
+            published: null,
+            text,
+            truncated: cut,
+            via: 'preview',
+          }
+        }
         const extracted =
           type === 'text/plain' ? { title: '', siteName: '', author: '', published: '', body: tidyText(source) } : extractPageText(source)
         if (extracted.body.length < MIN_TEXT_LENGTH) {

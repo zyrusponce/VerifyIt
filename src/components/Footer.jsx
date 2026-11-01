@@ -20,7 +20,6 @@ const columns = [
       { to: '/certificate', label: 'Certificate' },
       { to: '/verify-certificate', label: 'Verify a Certificate' },
       { to: '/about#references', label: 'References' },
-      { to: '/about#team', label: 'Team' },
     ],
   },
 ]

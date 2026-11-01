@@ -213,7 +213,6 @@ npm run build        # frontend production build
 | Investigation Lab cases (fictional) | `src/data/investigations.js` |
 | Investigation expected verdicts and explanations (server only) | `server/src/data/investigationVerdicts.js` |
 | Before You Share checklist | `src/data/checklist.js` |
-| Team members and course details | `src/data/team.js` |
 | References and verification tools | `src/data/references.js` |
 | Colors and fonts (design tokens) | `@theme` block in `src/index.css` |
 
@@ -256,7 +255,6 @@ Responses use `{ "data": ... }` on success and `{ "error": { "code", "message", 
 
 ## Before presenting
 
-- Replace the placeholder team members and course details in `src/data/team.js`.
 - Check every entry in `src/data/references.js`, then set `verified: true`.
 - Fill in the placeholder paragraphs on the About page (`src/pages/About.jsx`).
 - Do not add statistics unless you cite a verified source.

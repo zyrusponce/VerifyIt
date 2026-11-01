@@ -1022,6 +1022,8 @@ function AnalysisWorkspace({ compact, links }) {
               <Alert tone="success" title={`Text loaded from ${linkHost}`}>
                 Check it and delete anything that is not part of the article (menus, ads, related stories), then select Analyze Content.
                 {link.result?.truncated && ` The page was long, so only the first ${MAX_LENGTH_TEXT} characters were kept.`}
+                {link.result?.via === 'preview' &&
+                  " Only the post's preview was read, so the text may be shortened, and its images, video, and comments are not included. Attach a screenshot to include them."}
                 {link.result?.via === 'extractor' &&
                   ' This website blocks direct readers, so a page-reading service fetched the text for us. It may include extra lines, so read it carefully.'}
               </Alert>

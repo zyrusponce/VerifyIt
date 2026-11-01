@@ -210,15 +210,82 @@ describe('links that are never requested', () => {
     expect(web.allCalls()).toEqual([])
   })
 
-  it.each(['https://www.facebook.com/someone/posts/1', 'https://m.facebook.com/story.php', 'https://x.com/user/status/1', 'https://youtu.be/abc', 'https://www.tiktok.com/@a/video/1'])(
-    'explains that %s needs a sign-in',
-    async (url) => {
-      const res = await extract({ url }).expect(422)
-      expect(res.body.error.code).toBe('LINK_SOCIAL_MEDIA')
-      expect(res.body.error.message).toMatch(/take a screenshot and attach it/)
-      expect(web.allCalls()).toEqual([])
-    },
-  )
+})
+
+describe('social media posts', () => {
+  const preview = (title, description, siteName = 'Facebook') =>
+    html(`<!doctype html><html><head><title>Facebook</title>
+      <meta property="og:title" content="${title}">
+      <meta property="og:site_name" content="${siteName}">
+      <meta property="og:description" content="${description}">
+      </head><body><div id="login_form">Log in</div><script>var big = 1</script></body></html>`)
+
+  it('reads the post text from the link preview, keeping its line breaks', async () => {
+    web.use({
+      dns: { 'www.facebook.com': ['157.240.1.35'] },
+      pages: {
+        'https://www.facebook.com/gmanews/posts/123': preview(
+          'GMA News',
+          'Here are the biggest headlines for October 24, 2026.&#10;&#10;Typhoon Rosal exits PAR &#x2014; PAGASA&#10;Philippines...',
+        ),
+      },
+    })
+    const res = await extract({ url: 'https://www.facebook.com/gmanews/posts/123' }).expect(200)
+    expect(res.body.data).toEqual({
+      url: 'https://www.facebook.com/gmanews/posts/123',
+      host: 'www.facebook.com',
+      title: 'GMA News',
+      siteName: 'Facebook',
+      author: null,
+      published: null,
+      text: 'Title: GMA News\nWebsite: Facebook\n\nHere are the biggest headlines for October 24, 2026.\nTyphoon Rosal exits PAR — PAGASA\nPhilippines...',
+      truncated: false,
+      via: 'preview',
+    })
+    // The link is checked like any other: the host is resolved first.
+    expect(web.dnsCalls()).toContain('www.facebook.com')
+  })
+
+  it('reads X, Instagram, YouTube and Threads posts the same way', async () => {
+    for (const [url, host, site] of [
+      ['https://x.com/jack/status/20', 'x.com', 'X (formerly Twitter)'],
+      ['https://www.instagram.com/reel/abc', 'www.instagram.com', 'Instagram'],
+      ['https://www.youtube.com/watch?v=abc', 'www.youtube.com', 'YouTube'],
+      ['https://www.threads.net/@a/post/b', 'www.threads.net', 'Threads'],
+    ]) {
+      web.use({ dns: { [host]: ['93.184.216.34'] }, pages: { [url]: preview('A post', 'just setting up my twttr', site) } })
+      const res = await extract({ url }).expect(200)
+      expect(res.body.data).toMatchObject({ via: 'preview', siteName: site, text: expect.stringContaining('just setting up my twttr') })
+    }
+  })
+
+  it.each([
+    ['a sign-in wall', preview('Facebook', 'Log into Facebook to start sharing and connecting with your friends, family, and people you know.')],
+    ["Instagram's sign-in wall", preview('Instagram', "Create an account or log in to Instagram - Share what you're into with the people who get you.", 'Instagram')],
+    ['a page without a preview (TikTok)', html('<html><head><title>TikTok</title></head><body><script>window.__DATA__ = {}</script></body></html>')],
+    ['a missing post', status(404)],
+    ['a refused request', status(403)],
+    ['a page that is not HTML', () => new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })],
+  ])('explains that %s cannot be read, with the screenshot advice', async (_name, page) => {
+    web.use({ dns: { 'www.facebook.com': ['157.240.1.35'] }, pages: { 'https://www.facebook.com/someone/posts/1': page } })
+    const res = await extract({ url: 'https://www.facebook.com/someone/posts/1' }).expect(422)
+    expect(res.body.error.code).toBe('LINK_SOCIAL_MEDIA')
+    expect(res.body.error.message).toMatch(/private or deleted.*take a screenshot and attach it/)
+  })
+
+  it('cuts a very long preview', async () => {
+    web.use({ dns: { 'x.com': ['93.184.216.34'] }, pages: { 'https://x.com/a/status/1': preview('Long', 'word '.repeat(2000), 'X') } })
+    const res = await extract({ url: 'https://x.com/a/status/1' }).expect(200)
+    expect(res.body.data.text.length).toBeLessThan(3100)
+    expect(res.body.data.text.endsWith('…')).toBe(true)
+  })
+
+  it('still refuses a social site address that resolves to a private network', async () => {
+    web.use({ dns: { 'www.facebook.com': ['10.0.0.5'] } })
+    const res = await extract({ url: 'https://www.facebook.com/someone/posts/1' }).expect(422)
+    expect(res.body.error.code).toBe('LINK_NOT_ALLOWED')
+    expect(web.pageCalls()).toEqual([])
+  })
 
   it('refuses a host name that resolves to a private address', async () => {
     web.use({ dns: { 'rebind.example.net': ['93.184.216.34', '127.0.0.1'] } })
