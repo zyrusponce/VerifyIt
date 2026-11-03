@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeEntities, extractPageText, isPublicAddress } from '../../src/services/linkReader.service.js'
+import { LINK_MAX_BYTES, MAX_REGION_CHARS, decodeEntities, extractPageText, isPublicAddress } from '../../src/services/linkReader.service.js'
 
 describe('isPublicAddress', () => {
   it.each([
@@ -76,6 +76,34 @@ describe('extractPageText', () => {
   it('ignores an author meta tag that is only a profile link', () => {
     const { author } = extractPageText('<meta property="article:author" content="https://facebook.com/someone"><meta name="author" content="">')
     expect(author).toBe('')
+  })
+
+  it('converts only the start of a very long region and says so, without leaving half a tag', () => {
+    const sentence = '<p>Readable words that form a sentence in a <a href="https://example.org/a-long-link">very long</a> article.</p>'
+    const { body, cut } = extractPageText(`<article>${sentence.repeat(10_000)}</article>`)
+    expect(cut).toBe(true)
+    expect(body.length).toBeGreaterThan(6000)
+    expect(body.length).toBeLessThan(MAX_REGION_CHARS)
+    expect(body).not.toMatch(/[<>]/)
+  })
+
+  it('does not report a cut for a page that fits', () => {
+    const words = 'Readable words that form a paragraph long enough to be taken as the article body. '.repeat(3)
+    expect(extractPageText(`<article><p>${words}</p></article>`).cut).toBe(false)
+  })
+
+  it('stays within the CPU a Cloudflare Worker allows on a large page', () => {
+    // Shaped like a long encyclopedia article: the story body is marked, and dense with links and references.
+    const paragraph = `<p>${'Words with a <a href="/wiki/Some_Long_Page_Title" class="mw-redirect" title="Some Long Page Title">link</a> and a reference<sup class="reference"><a href="#cite_note-1">[1]</a></sup> in them. '.repeat(20)}</p>`
+    const page = `<html><head><title>Long</title></head><body><main><div id="mw-content-text">${paragraph.repeat(250)}</div></main></body></html>`
+    expect(page.length).toBeGreaterThan(LINK_MAX_BYTES * 0.8)
+    const times = []
+    for (let run = 0; run < 7; run += 1) {
+      const started = performance.now()
+      extractPageText(page)
+      times.push(performance.now() - started)
+    }
+    expect(times.sort((a, b) => a - b)[3]).toBeLessThan(15)
   })
 
   it('stays fast on hostile markup', () => {

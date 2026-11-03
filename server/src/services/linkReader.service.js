@@ -5,8 +5,10 @@
      public. Host names are resolved first (DNS over HTTPS) and refused when any address is not public. Redirects
      are followed by hand, at most 3, and every hop is checked again. On social media sites only the post's link
      preview (og:title, og:description) is read, and a sign-in wall counts as unreadable. Only HTML and plain text are read, at most
-     2 MB, within one 10-second budget for the whole read. Nothing is stored; failures are logged with the host
+     1 MB, within one 10-second budget for the whole read. Nothing is stored; failures are logged with the host
      name and the failure kind only, never the page or the full link.
+  ⏱️ CPU: A Cloudflare Worker that uses too much CPU on a request is stopped and answers with its own 503, so the
+     same link can work once and fail the next time. Only as much of a page as the text box can hold is converted.
   🚨 ERROR HANDLING: 422 LINK_NOT_ALLOWED / LINK_SOCIAL_MEDIA / LINK_UNSUPPORTED_TYPE / LINK_NO_TEXT;
      502 LINK_UNREACHABLE / LINK_FETCH_FAILED; 503 LINK_CHECK_UNAVAILABLE (the DNS check failed); 504 LINK_TIMEOUT.
 */
@@ -14,7 +16,9 @@ import { AppError } from '../utils/AppError.js'
 import { AI_CONTENT_MAX_LENGTH } from './aiAnalysis.service.js'
 
 export const LINK_TIMEOUT_MS = 10_000
-export const LINK_MAX_BYTES = 2_000_000
+export const LINK_MAX_BYTES = 1_000_000
+// Markup converted per region of a page. Well above what AI_CONTENT_MAX_LENGTH characters of text take, even in dense markup.
+export const MAX_REGION_CHARS = AI_CONTENT_MAX_LENGTH * 20
 const MAX_REDIRECTS = 3
 const MIN_TEXT_LENGTH = 80
 const DOH_URL = 'https://cloudflare-dns.com/dns-query'
@@ -378,12 +382,16 @@ function readJsonLd(html) {
   return found
 }
 
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
 /** "2025-03-14T08:00:00+08:00" → "March 14, 2025". Anything else is kept as written. */
 function formatPublished(value) {
   const day = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
   if (!day) return tidyLine(value, 60)
   const date = new Date(Date.UTC(Number(day[1]), Number(day[2]) - 1, Number(day[3])))
-  return Number.isNaN(date.getTime()) ? tidyLine(value, 60) : date.toLocaleDateString('en-US', { dateStyle: 'long', timeZone: 'UTC' })
+  if (Number.isNaN(date.getTime())) return tidyLine(value, 60)
+  // Not toLocaleDateString: starting Intl costs more CPU than reading the rest of the page.
+  return `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`
 }
 
 /** The page's <meta> tags by property, name, or itemprop (the first of each). */
@@ -481,13 +489,16 @@ const BODY_CONTAINER_NAMES = new Set([
   'article-body', 'article__body', 'articlebody', 'article-content', 'article__content', 'story-body', 'story-content',
   'entry-content', 'post-content', 'post-body', 'mw-content-text',
 ])
+const BODY_CONTAINER_HINT = new RegExp([...BODY_CONTAINER_NAMES].join('|'))
 
 /**
  * The first element marked as the story body (itemprop="articleBody" or a known class/id), up to its matching
- * closing tag (nested tags of the same name are counted), or null. One pass over the page.
+ * closing tag (nested tags of the same name are counted) or MAX_REGION_CHARS, or null. One pass over the page.
  */
 function bodyContainer(html, lower) {
   for (const match of lower.matchAll(/<([a-z][a-z0-9]*)\b([^<>]*)>/g)) {
+    // Most tags name none of these, so their attributes are never parsed.
+    if (!BODY_CONTAINER_HINT.test(match[2])) continue
     const attributes = attributesOf(match[2])
     const names = `${attributes.class ?? ''} ${attributes.id ?? ''}`.split(/\s+/)
     if (attributes.itemprop !== 'articlebody' && !names.some((name) => BODY_CONTAINER_NAMES.has(name))) continue
@@ -495,7 +506,7 @@ function bodyContainer(html, lower) {
     const tags = new RegExp(`<(/?)${tag}(?=[\\s/>])`, 'g')
     tags.lastIndex = match.index + match[0].length
     let depth = 1
-    for (let next = tags.exec(lower); next; next = tags.exec(lower)) {
+    for (let next = tags.exec(lower); next && next.index - match.index <= MAX_REGION_CHARS; next = tags.exec(lower)) {
       depth += next[1] ? -1 : 1
       if (depth === 0) return html.slice(match.index, next.index)
     }
@@ -531,17 +542,32 @@ const DROPPED_ELEMENTS = [
   'aside', 'form', 'button', 'select', 'dialog',
 ]
 
-/** Title, site, author, date, and readable body text of an HTML page. */
+/** The start of a region, ending before a tag so that no half a tag is left behind. */
+function limitRegion(fragment) {
+  if (fragment.length <= MAX_REGION_CHARS) return { markup: fragment, cut: false }
+  const open = fragment.lastIndexOf('<', MAX_REGION_CHARS)
+  const insideTag = open > fragment.lastIndexOf('>', MAX_REGION_CHARS)
+  return { markup: fragment.slice(0, insideTag ? open : MAX_REGION_CHARS), cut: true }
+}
+
+/** Title, site, author, date, and readable body text of an HTML page; `cut` says whether the region was longer. */
 export function extractPageText(html) {
   const metadata = readMetadata(html)
   const cleaned = removeElements(html, DROPPED_ELEMENTS)
   const lower = cleaned.toLowerCase()
   // Prefer the marked story body, then the article, then <main>, then the whole page, when a region has too little text.
-  const candidates = [bodyContainer(cleaned, lower), region(cleaned, lower, 'article'), region(cleaned, lower, 'main'), cleaned]
-    .filter(Boolean)
-    .map((fragment) => withoutPageFurniture(htmlToText(fragment)))
-  const body = candidates.find((text) => text.length >= 200) ?? candidates.reduce((longest, text) => (text.length > longest.length ? text : longest), '')
-  return { ...metadata, body }
+  // Each is converted only when the one before it falls short: this is most of the work done on a page.
+  const regions = [() => bodyContainer(cleaned, lower), () => region(cleaned, lower, 'article'), () => region(cleaned, lower, 'main'), () => cleaned]
+  let longest = { body: '', cut: false }
+  for (const find of regions) {
+    const fragment = find()
+    if (!fragment) continue
+    const { markup, cut } = limitRegion(fragment)
+    const body = withoutPageFurniture(htmlToText(markup))
+    if (body.length >= 200) return { ...metadata, body, cut }
+    if (body.length > longest.body.length) longest = { body, cut }
+  }
+  return { ...metadata, ...longest }
 }
 
 /** The text placed in the student's text box: page details first, then the body, cut to the analysis limit. */
@@ -693,7 +719,9 @@ export function createLinkReader({ config, logger, fetch: fetchImpl, timeoutMs =
           }
         }
         const extracted =
-          type === 'text/plain' ? { title: '', siteName: '', author: '', published: '', body: tidyText(source) } : extractPageText(source)
+          type === 'text/plain'
+            ? { title: '', siteName: '', author: '', published: '', body: tidyText(source.slice(0, MAX_REGION_CHARS)), cut: source.length > MAX_REGION_CHARS }
+            : extractPageText(source)
         if (extracted.body.length < MIN_TEXT_LENGTH) {
           throw linkError(
             422,
@@ -710,7 +738,7 @@ export function createLinkReader({ config, logger, fetch: fetchImpl, timeoutMs =
           author: extracted.author || null,
           published: extracted.published || null,
           text,
-          truncated: cut || body.cut,
+          truncated: cut || extracted.cut || body.cut,
           via: 'direct',
         }
       } catch (error) {

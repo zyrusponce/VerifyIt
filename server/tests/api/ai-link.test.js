@@ -347,7 +347,18 @@ describe('when a page cannot be read', () => {
     expect(res.body.error.code).toBe('LINK_NO_TEXT')
   })
 
-  it('reads only the first 2 MB of a huge page', async () => {
+  it('marks the text as cut when a page has more markup than is converted, even when the text is short', async () => {
+    // Mostly tags: the part that is converted holds far less than the analysis limit.
+    const spans = '<span class="word highlighted-word-style">a</span>'.repeat(10_000)
+    const words = 'Plenty of readable words in an article with heavy markup around them. '.repeat(5)
+    web.use({ dns: { 'dense.example.org': ['93.184.216.34'] }, pages: { 'https://dense.example.org/': html(`<article><p>${words}</p>${spans}</article>`) } })
+    const { body } = await extract({ url: 'https://dense.example.org/' }).expect(200)
+    expect(body.data.text.length).toBeLessThan(AI_CONTENT_MAX_LENGTH)
+    expect(body.data.truncated).toBe(true)
+  })
+
+  it('reads only the first 1 MB of a huge page', async () => {
+    expect(LINK_MAX_BYTES).toBe(1_000_000)
     const huge = `<article><p>${'Plenty of readable words in a very long article. '.repeat(Math.ceil((LINK_MAX_BYTES * 1.5) / 50))}</p></article>`
     web.use({ dns: { 'huge.example.org': ['93.184.216.34'] }, pages: { 'https://huge.example.org/': html(huge) } })
     const { body } = await extract({ url: 'https://huge.example.org/' }).expect(200)
