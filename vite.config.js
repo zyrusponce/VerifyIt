@@ -16,7 +16,8 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    cloudflare({ viteEnvironment: { name: 'worker' } }),
+    // With an API proxy set, /api goes to that server: the Worker plugin would otherwise answer it first.
+    ...(process.env.VERIFYIT_API_PROXY ? [] : [cloudflare({ viteEnvironment: { name: 'worker' } })]),
   ],
 
   environments: {

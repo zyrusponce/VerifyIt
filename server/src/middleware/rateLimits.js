@@ -2,7 +2,7 @@
 // Limits are sized for a classroom: many students often share one campus IP address (NAT). Behind a
 // reverse proxy, set TRUST_PROXY so each client's real IP is used. AI analysis is also limited per signed-in
 // user, because every request spends the shared AI provider quota.
-import { rateLimit } from 'express-rate-limit'
+import { ipKeyGenerator, rateLimit } from 'express-rate-limit'
 import { AppError } from '../utils/AppError.js'
 
 const MINUTE = 60 * 1000
@@ -30,11 +30,13 @@ const passThrough = (_req, _res, next) => next()
 /**
  * Who a request counts against. Cloudflare Workers does not expose the client address as `req.ip`, so the
  * limiter would crash on every request there; Cloudflare always sets `CF-Connecting-IP` itself (a client cannot
- * forge it), so prefer that, then `req.ip` (local server, other hosts), then one shared bucket.
+ * forge it), so prefer that, then `req.ip` (local server, other hosts), then one shared bucket. An IPv6 client
+ * controls a whole network of addresses, so ipKeyGenerator counts the network, not the address.
  */
 export function clientKey(req) {
   const cloudflareIp = req.headers?.['cf-connecting-ip']
-  return (typeof cloudflareIp === 'string' && cloudflareIp.trim()) || req.ip || 'unknown-client'
+  const address = (typeof cloudflareIp === 'string' && cloudflareIp.trim()) || req.ip
+  return address ? ipKeyGenerator(address) : 'unknown-client'
 }
 
 /** The verified user id set by authenticate; the client address if the limiter ever runs before it. */

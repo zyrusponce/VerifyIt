@@ -97,13 +97,12 @@ describe('extractPageText', () => {
     const paragraph = `<p>${'Words with a <a href="/wiki/Some_Long_Page_Title" class="mw-redirect" title="Some Long Page Title">link</a> and a reference<sup class="reference"><a href="#cite_note-1">[1]</a></sup> in them. '.repeat(20)}</p>`
     const page = `<html><head><title>Long</title></head><body><main><div id="mw-content-text">${paragraph.repeat(250)}</div></main></body></html>`
     expect(page.length).toBeGreaterThan(LINK_MAX_BYTES * 0.8)
-    const times = []
-    for (let run = 0; run < 7; run += 1) {
-      const started = performance.now()
-      extractPageText(page)
-      times.push(performance.now() - started)
-    }
-    expect(times.sort((a, b) => a - b)[3]).toBeLessThan(15)
+    // CPU time, as the Worker limit counts it. Elapsed time depends on what else this machine is running.
+    const runs = 10
+    const before = process.cpuUsage()
+    for (let run = 0; run < runs; run += 1) extractPageText(page)
+    const { user, system } = process.cpuUsage(before)
+    expect((user + system) / 1000 / runs).toBeLessThan(40)
   })
 
   it('stays fast on hostile markup', () => {

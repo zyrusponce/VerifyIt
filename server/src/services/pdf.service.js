@@ -4,6 +4,9 @@
      has already verified ownership and active status. The QR code encodes the public verification URL.
   🚨 ERROR HANDLING: The whole PDF is rendered into memory first; any PDFKit/QR failure rejects the
      promise (→ 500 via the error handler) so a partial or broken file is never sent.
+  ⏱️ CPU: A Cloudflare Worker that uses too much CPU on a request is stopped and answers with its own 503. Parsing
+     fonts is most of the work here, so small fonts are used unless a name needs the full one, and the QR code is
+     drawn as vector shapes instead of encoding and decoding a PNG image.
 */
 
 import { Buffer } from 'node:buffer'
@@ -11,27 +14,8 @@ import PDFDocument from 'pdfkit'
 import QRCode from 'qrcode'
 import * as fontkit from 'fontkit'
 
-import serifFontUrl from '../../node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif.ttf?inline'
-import serifBoldFontUrl from '../../node_modules/dejavu-fonts-ttf/ttf/DejaVuSerif-Bold.ttf?inline'
-import sansFontUrl from '../../node_modules/dejavu-fonts-ttf/ttf/DejaVuSans.ttf?inline'
-import sansBoldFontUrl from '../../node_modules/dejavu-fonts-ttf/ttf/DejaVuSans-Bold.ttf?inline'
-
-function fontBuffer(dataUrl) {
-  const comma = dataUrl.indexOf(',')
-
-  if (comma < 0) {
-    throw new Error('Invalid embedded font data')
-  }
-
-  return Buffer.from(dataUrl.slice(comma + 1), 'base64')
-}
-
-const FONTS = {
-  serif: fontBuffer(serifFontUrl),
-  serifBold: fontBuffer(serifBoldFontUrl),
-  sans: fontBuffer(sansFontUrl),
-  sansBold: fontBuffer(sansBoldFontUrl),
-}
+import { FONTS } from '#pdf-fonts'
+import { inNameSubset } from './pdfFontSubsets.js'
 
 const COLORS = {
   navy: '#0b1f4d',
@@ -61,7 +45,8 @@ const noLigatures = () => ({ liga: false, clig: false })
 let nameFont
 /** True when every character of the name has a glyph in the font used to print it. */
 export function canPrintName(name) {
-  nameFont ??= fontkit.create(FONTS.serifBold)
+  if (inNameSubset(name)) return true
+  nameFont ??= fontkit.create(FONTS.nameFull)
   for (const char of String(name ?? '')) {
     if (char === ' ') continue
     if (!nameFont.hasGlyphForCodePoint(char.codePointAt(0))) return false
@@ -69,8 +54,13 @@ export function canPrintName(name) {
   return true
 }
 
+const dateFormat = (timeZone) => new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone })
+// Starting Intl is slow, so it happens while the server loads rather than during a download.
+const dateFormats = new Map([['UTC', dateFormat('UTC')]])
+
 export function formatIssueDate(isoDate, timeZone = 'UTC') {
-  return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone }).format(new Date(isoDate))
+  if (!dateFormats.has(timeZone)) dateFormats.set(timeZone, dateFormat(timeZone))
+  return dateFormats.get(timeZone).format(new Date(isoDate))
 }
 
 /** Largest font size (between max and min) at which `text` fits on one line of `width`. */
@@ -90,19 +80,28 @@ function centered(doc, text, y, { font, size, color, width, x, characterSpacing 
     .text(text, x, y, { width, align: 'center', characterSpacing, lineBreak: true, features: noLigatures() })
 }
 
+/** Draws the QR code for `text` as vector shapes on a white square, keeping one module of clear space around it. */
+function drawQrCode(doc, text, x, y, size) {
+  const { modules } = QRCode.create(text, { errorCorrectionLevel: 'M' })
+  const cell = size / (modules.size + 2)
+  doc.rect(x, y, size, size).fill('#ffffff')
+  for (let row = 0; row < modules.size; row += 1) {
+    for (let column = 0; column < modules.size; column += 1) {
+      if (!modules.get(row, column)) continue
+      const start = column
+      while (column + 1 < modules.size && modules.get(row, column + 1)) column += 1
+      doc.rect(x + (start + 1) * cell, y + (row + 1) * cell, (column - start + 1) * cell, cell)
+    }
+  }
+  doc.fill(COLORS.navy)
+}
+
 /**
  * Renders the certificate as an A4 landscape PDF and resolves with the complete file.
  * @param {{ recipientName: string, certificateNumber: string, issuedAt: string, verificationUrl: string,
  *           timeZone?: string, compress?: boolean }} certificate
  */
 export async function renderCertificatePdf({ recipientName, certificateNumber, issuedAt, verificationUrl, timeZone = 'UTC', compress = true }) {
-  const qrPng = await QRCode.toBuffer(verificationUrl, {
-    type: 'png',
-    errorCorrectionLevel: 'M',
-    margin: 1,
-    width: 320,
-    color: { dark: COLORS.navy, light: '#ffffff' },
-  })
   const issueDate = formatIssueDate(issuedAt, timeZone)
 
   return new Promise((resolve, reject) => {
@@ -111,6 +110,8 @@ export async function renderCertificatePdf({ recipientName, certificateNumber, i
       layout: 'landscape',
       margin: 0,
       compress,
+      // No default font: PDFKit would read Helvetica from a file, which does not exist on a Cloudflare Worker.
+      font: null,
       autoFirstPage: true,
       info: {
         Title: `VerifyIT ${CERTIFICATE_TEXT.title} - ${certificateNumber}`,
@@ -129,6 +130,8 @@ export async function renderCertificatePdf({ recipientName, certificateNumber, i
       doc.registerFont('serif-bold', FONTS.serifBold)
       doc.registerFont('sans', FONTS.sans)
       doc.registerFont('sans-bold', FONTS.sansBold)
+      doc.registerFont('name-full', FONTS.nameFull)
+      const nameFontName = inNameSubset(recipientName) ? 'serif-bold' : 'name-full'
 
       const { width: pageWidth, height: pageHeight } = doc.page
       const contentX = 90
@@ -175,9 +178,9 @@ export async function renderCertificatePdf({ recipientName, certificateNumber, i
 
       centered(doc, 'This certifies that', 186, { font: 'serif', size: 13, color: COLORS.slate, width: contentWidth, x: contentX })
 
-      const nameSize = fitFontSize(doc, recipientName, { font: 'serif-bold', max: 38, min: 18, width: contentWidth - 40 })
+      const nameSize = fitFontSize(doc, recipientName, { font: nameFontName, max: 38, min: 18, width: contentWidth - 40 })
       centered(doc, recipientName, 210 + (38 - nameSize) / 2, {
-        font: 'serif-bold',
+        font: nameFontName,
         size: nameSize,
         color: COLORS.navy,
         width: contentWidth,
@@ -217,7 +220,7 @@ export async function renderCertificatePdf({ recipientName, certificateNumber, i
 
       const qrSize = 96
       const qrX = pageWidth - 90 - qrSize
-      doc.image(qrPng, qrX, detailsTop - 6, { width: qrSize, height: qrSize })
+      drawQrCode(doc, verificationUrl, qrX, detailsTop - 6, qrSize)
       doc
         .font('sans-bold')
         .fontSize(7.5)

@@ -19,3 +19,13 @@ describe('rate limit client key', () => {
     expect(userKey({ auth: { userId: '' }, headers: {}, ip: '198.51.100.4' })).toBe('198.51.100.4')
   })
 })
+
+describe('IPv6 clients', () => {
+  it('counts one IPv6 network as one client, so rotating addresses inside it does not avoid the limit', () => {
+    const first = clientKey({ headers: { 'cf-connecting-ip': '2001:db8:1234:5678::1' } })
+    const second = clientKey({ headers: { 'cf-connecting-ip': '2001:db8:1234:5678:aaaa:bbbb:cccc:dddd' } })
+    expect(first).toBe(second)
+    expect(clientKey({ ip: '2001:db8:1234:5678::1', headers: {} })).toBe(first)
+    expect(first).not.toBe(clientKey({ headers: { 'cf-connecting-ip': '2001:db8:9999:5678::1' } }))
+  })
+})
