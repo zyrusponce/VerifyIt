@@ -25,7 +25,7 @@ export default function Quiz() {
               </p>
               <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-5xl">Choose Your Challenge</h1>
               <p className="mt-4 text-lg leading-relaxed text-slate-600">
-                Test your digital literacy skills, one topic at a time.
+                Test your media literacy skills, one topic at a time.
               </p>
             </div>
             <dl className="flex gap-6 text-sm">

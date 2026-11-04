@@ -20,7 +20,7 @@ const objectives = [
   'Teach practical habits for evaluating sources, headlines, images, and AI-generated content.',
   'Give learners hands-on practice investigating realistic (fictional) online posts.',
   'Encourage responsible sharing and respectful correction of misinformation.',
-  'Connect digital literacy to the wider relationship between technology and society.',
+  'Connect media literacy to the wider relationship between technology and society.',
 ]
 
 // The primary audience comes first and is highlighted; the others also benefit from the same habits.
@@ -52,7 +52,7 @@ export default function About() {
       <PageHeader watermark="About"
         eyebrow="About the project"
         icon={Info}
-        title="VerifyIT: A Digital Literacy Campaign Against Online Misinformation"
+        title ="VerifyIT: A Media Literacy Campaign Against Online Misinformation"
         description="An STS class project that helps people recognize misinformation, investigate online claims, and share responsibly."
       />
 
@@ -151,7 +151,7 @@ export default function About() {
           <Card padding="lg">
             <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-cyan-700">
               <Target className="size-4" aria-hidden="true" />
-              Responsible digital citizenship
+              Responsible media citizenship
             </p>
             <h2 className="mt-3 text-2xl font-bold">Habits worth sharing</h2>
             <ul className="mt-4 space-y-3">
